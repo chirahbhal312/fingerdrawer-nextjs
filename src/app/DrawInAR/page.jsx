@@ -54,6 +54,8 @@ export default function Page() {
         setMaterial(new THREE.MeshBasicMaterial({
           map: tex,
           transparent: true,
+           opacity: 0, // adjust as needed
+           alphaTest: 0,
           side: THREE.DoubleSide,
         }));
         setReady(true);
