@@ -12,19 +12,22 @@ export default function PaintApp() {
   const points = useRef([]);
   const startPoint = useRef(null);
   const polygonPoints = useRef([]);
+  const savedImage = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.height = window.innerHeight * 0.8;
 
     const draw = (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      if (tool === "pencil" && isDrawing) {
+      if (!isDrawing) return;
+
+      if (tool === "pencil") {
         points.current.push({ x, y });
         ctx.lineWidth = lineThickness;
         ctx.strokeStyle = color;
@@ -36,17 +39,18 @@ export default function PaintApp() {
         ctx.stroke();
       }
 
-      if (tool === "eraser" && isDrawing) {
+      if (tool === "eraser") {
         ctx.clearRect(x - lineThickness / 2, y - lineThickness / 2, lineThickness, lineThickness);
       }
 
-      if ((tool === "rectangle" || tool === "circle") && isDrawing && startPoint.current) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.lineWidth = lineThickness;
-        ctx.strokeStyle = color;
-
+      if ((tool === "rectangle" || tool === "circle") && startPoint.current) {
         const w = x - startPoint.current.x;
         const h = y - startPoint.current.y;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.putImageData(savedImage.current, 0, 0); // restore previous state
+        ctx.lineWidth = lineThickness;
+        ctx.strokeStyle = color;
 
         if (tool === "rectangle") {
           if (isFilled) {
@@ -73,7 +77,9 @@ export default function PaintApp() {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+
       setIsDrawing(true);
+      savedImage.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
       if (tool === "rectangle" || tool === "circle") {
         startPoint.current = { x, y };
@@ -86,6 +92,7 @@ export default function PaintApp() {
           ctx.font = "30px Arial";
           ctx.fillText(text, x, y);
         }
+        setIsDrawing(false);
       }
 
       if (tool === "triangle") {
@@ -102,13 +109,13 @@ export default function PaintApp() {
           }
           ctx.stroke();
           polygonPoints.current = [];
+          setIsDrawing(false);
         }
       }
 
       if (tool === "polygon") {
         polygonPoints.current.push({ x, y });
         if (polygonPoints.current.length >= 2) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.beginPath();
           ctx.moveTo(polygonPoints.current[0].x, polygonPoints.current[0].y);
           polygonPoints.current.forEach((pt) => ctx.lineTo(pt.x, pt.y));
@@ -148,7 +155,7 @@ export default function PaintApp() {
 
   return (
     <div>
-      <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full" />
+      <canvas ref={canvasRef} className="w-full" style={{ height: "80vh" }} />
       <div className="absolute top-4 left-4 bg-white bg-opacity-80 p-4 rounded-lg shadow-lg max-w-xs z-10">
         <h2 className="text-xl font-bold mb-3">Paint Controls</h2>
         <div className="mb-2">
