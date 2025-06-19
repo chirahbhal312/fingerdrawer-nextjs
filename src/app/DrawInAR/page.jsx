@@ -32,15 +32,15 @@ export default function CanvasARApp() {
 
   useEffect(() => {
     const canvas = canvasRef.current
+    if (!canvas) return // Add null check
+
     const ctx = canvas.getContext("2d")
 
     function resizeCanvas() {
+      if (!canvas) return // Add null check here too
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
     }
-
-    window.addEventListener("resize", resizeCanvas)
-    resizeCanvas()
 
     function startDrawing(x, y) {
       drawingRef.current = true
@@ -48,7 +48,7 @@ export default function CanvasARApp() {
     }
 
     function drawLine(x, y) {
-      if (!drawingRef.current) return
+      if (!drawingRef.current || !ctx) return
       ctx.strokeStyle = color
       ctx.lineWidth = brushSize
       ctx.lineCap = "round"
@@ -69,11 +69,6 @@ export default function CanvasARApp() {
       drawingRef.current = false
     }
 
-    canvas.addEventListener("mousedown", handleMouseDown)
-    canvas.addEventListener("mousemove", handleMouseMove)
-    canvas.addEventListener("mouseup", handleMouseUp)
-    canvas.addEventListener("mouseout", handleMouseOut)
-
     // Touch events
     const handleTouchStart = (e) => {
       const touch = e.touches[0]
@@ -89,6 +84,7 @@ export default function CanvasARApp() {
 
     const handleTouchEnd = () => {
       drawingRef.current = false
+      if (!canvas) return
       const dataURL = canvas.toDataURL("image/png")
       const textureLoader = new THREE.TextureLoader()
       textureLoader.load(dataURL, (texture) => {
@@ -102,21 +98,30 @@ export default function CanvasARApp() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
 
+    window.addEventListener("resize", resizeCanvas)
+    resizeCanvas()
+
+    canvas.addEventListener("mousedown", handleMouseDown)
+    canvas.addEventListener("mousemove", handleMouseMove)
+    canvas.addEventListener("mouseup", handleMouseUp)
+    canvas.addEventListener("mouseout", handleMouseOut)
     canvas.addEventListener("touchstart", handleTouchStart)
     canvas.addEventListener("touchmove", handleTouchMove)
     canvas.addEventListener("touchend", handleTouchEnd)
 
     return () => {
       window.removeEventListener("resize", resizeCanvas)
-      canvas.removeEventListener("mousedown", handleMouseDown)
-      canvas.removeEventListener("mousemove", handleMouseMove)
-      canvas.removeEventListener("mouseup", handleMouseUp)
-      canvas.removeEventListener("mouseout", handleMouseOut)
-      canvas.removeEventListener("touchstart", handleTouchStart)
-      canvas.removeEventListener("touchmove", handleTouchMove)
-      canvas.removeEventListener("touchend", handleTouchEnd)
+      if (canvas) {
+        canvas.removeEventListener("mousedown", handleMouseDown)
+        canvas.removeEventListener("mousemove", handleMouseMove)
+        canvas.removeEventListener("mouseup", handleMouseUp)
+        canvas.removeEventListener("mouseout", handleMouseOut)
+        canvas.removeEventListener("touchstart", handleTouchStart)
+        canvas.removeEventListener("touchmove", handleTouchMove)
+        canvas.removeEventListener("touchend", handleTouchEnd)
+      }
     }
-  }, [color, brushSize])
+  }, [color, brushSize, isDrawingUIVisible])
 
   useEffect(() => {
     // AR Setup
@@ -272,12 +277,14 @@ export default function CanvasARApp() {
 
   const clearCanvas = () => {
     const canvas = canvasRef.current
+    if (!canvas) return
     const ctx = canvas.getContext("2d")
     ctx.clearRect(0, 0, canvas.width, canvas.height)
   }
 
   const enterAR = () => {
     const canvas = canvasRef.current
+    if (!canvas) return
     const dataURL = canvas.toDataURL("image/png")
     const textureLoader = new THREE.TextureLoader()
     textureLoader.load(dataURL, (texture) => {
