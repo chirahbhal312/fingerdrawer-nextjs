@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 
 export default function Page() {
-  const canvasRef = useRef();
+  const canvasRef = useRef(null);
   const isDrawing = useRef(false);
   const lastPos = useRef([0, 0]);
   const colorRef = useRef('#000000');
@@ -16,9 +16,6 @@ export default function Page() {
   const sceneRef = useRef();
   const cameraRef = useRef();
   const rendererRef = useRef();
-  const hitTestSourceRef = useRef(null);
-  const localSpaceRef = useRef(null);
-  const reticleRef = useRef();
 
   // Drawing logic
   useEffect(() => {
@@ -64,13 +61,11 @@ export default function Page() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
 
-    // Mouse events
     canvas.addEventListener('mousedown', e => start(e.offsetX, e.offsetY));
     canvas.addEventListener('mousemove', e => draw(e.offsetX, e.offsetY));
     canvas.addEventListener('mouseup', end);
     canvas.addEventListener('mouseout', end);
 
-    // Touch events
     canvas.addEventListener('touchstart', e => {
       const t = e.touches[0];
       start(t.clientX, t.clientY);
@@ -86,7 +81,7 @@ export default function Page() {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
-  // AR + Hit-Test setup
+  // AR Setup — simplified
   useEffect(() => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera();
@@ -96,65 +91,31 @@ export default function Page() {
     document.body.appendChild(renderer.domElement);
 
     const button = ARButton.createButton(renderer, {
-      requiredFeatures: ['hit-test'],
+      requiredFeatures: [],
       optionalFeatures: ['dom-overlay'],
       domOverlay: { root: document.body },
     });
     document.body.appendChild(button);
 
-    // Reticle tells where objects will be placed
-    const reticle = new THREE.Mesh(
-      new THREE.RingGeometry(0.1, 0.11, 32).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial()
-    );
-    reticle.matrixAutoUpdate = false;
-    reticle.visible = false;
-    scene.add(reticle);
-    reticleRef.current = reticle;
-
-    renderer.xr.addEventListener('sessionstart', () => {
-      const session = renderer.xr.getSession();
-      session.requestReferenceSpace('viewer').then(ref => {
-        session.requestHitTestSource({ space: ref }).then(source => {
-          hitTestSourceRef.current = source;
-        });
-      });
-      session.addEventListener('end', () => {
-        hitTestSourceRef.current = null;
-      });
-    });
-
-    renderer.xr.addEventListener('sessionend', () => {
-      reticle.visible = false;
-    });
-
     const controller = renderer.xr.getController(0);
     scene.add(controller);
     controller.addEventListener('select', () => {
-      if (!ready || !material || !reticle.visible) return;
-      const geometry = new THREE.PlaneGeometry(
-        0.4, 0.4 * (canvasRef.current.width / canvasRef.current.height)
-      );
-      const mesh = new THREE.Mesh(geometry, material.clone());
-      mesh.position.setFromMatrixPosition(reticle.matrix);
-      mesh.quaternion.setFromRotationMatrix(reticle.matrix);
-      scene.add(mesh);
+      if (!ready || !material) return;
+
+      const aspect = canvasRef.current.width / canvasRef.current.height;
+      const geometry = new THREE.PlaneGeometry(0.4, 0.4 / aspect);
+      const plane = new THREE.Mesh(geometry, material.clone());
+
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+
+      plane.position.copy(camera.position).add(direction.multiplyScalar(1.5));
+      plane.quaternion.copy(camera.quaternion);
+      scene.add(plane);
       setReady(false);
     });
 
-    renderer.setAnimationLoop((time, frame) => {
-      if (frame && hitTestSourceRef.current) {
-        const refSpace = renderer.xr.getReferenceSpace();
-        const hits = frame.getHitTestResults(hitTestSourceRef.current);
-        if (hits.length > 0) {
-          const hit = hits[0];
-          const pose = hit.getPose(refSpace);
-          reticle.matrix.fromArray(pose.transform.matrix);
-          reticle.visible = true;
-        } else {
-          reticle.visible = false;
-        }
-      }
+    renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
     });
 
@@ -201,19 +162,38 @@ export default function Page() {
           margin: 0; overflow: hidden; height: 100%; background: black;
         }
         .hamburger {
-          position: fixed; top:10px; right:10px; font-size:28px; z-index:3;
-          background:rgba(255,255,255,0.9); padding:5px 10px; border-radius:8px; cursor:pointer;
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          font-size: 28px;
+          z-index: 3;
+          background: rgba(255,255,255,0.9);
+          padding: 5px 10px;
+          border-radius: 8px;
+          cursor: pointer;
         }
         .controls {
-          position: fixed; top:10px; left:10px; z-index:2;
-          background:rgba(255,255,255,0.9); padding:10px; border-radius:8px;
-          display:flex; flex-direction:column; gap:10px;
+          position: fixed;
+          top: 10px;
+          left: 10px;
+          z-index: 2;
+          background: rgba(255,255,255,0.9);
+          padding: 10px;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
         }
         .row {
-          display:flex; gap:10px;
+          display: flex;
+          gap: 10px;
         }
         canvas.drawing-canvas {
-          position:absolute; top:0; left:0; z-index:1; touch-action:none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          z-index: 1;
+          touch-action: none;
         }
       `}</style>
     </>
