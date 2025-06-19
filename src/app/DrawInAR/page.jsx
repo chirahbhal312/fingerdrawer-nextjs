@@ -9,9 +9,9 @@ export default function CanvasARApp() {
   const sceneRef = useRef(null)
   const cameraRef = useRef(null)
   const controllerRef = useRef(null)
+  const arButtonRef = useRef(null)
 
-  const [isDrawingUIVisible, setIsDrawingUIVisible] = useState(false)
-  const [isHamburgerVisible, setIsHamburgerVisible] = useState(false)
+  const [isARActive, setIsARActive] = useState(false)
   const [color, setColor] = useState("#000000")
   const [brushSize, setBrushSize] = useState(5)
 
@@ -30,14 +30,15 @@ export default function CanvasARApp() {
   const dragIntersectionRef = useRef(new THREE.Vector3())
   const dragOffsetRef = useRef(new THREE.Vector3())
 
+  // Canvas drawing setup
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return // Add null check
+    if (!canvas) return
 
     const ctx = canvas.getContext("2d")
 
     function resizeCanvas() {
-      if (!canvas) return // Add null check here too
+      if (!canvas) return
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
     }
@@ -72,30 +73,20 @@ export default function CanvasARApp() {
     // Touch events
     const handleTouchStart = (e) => {
       const touch = e.touches[0]
-      startDrawing(touch.clientX, touch.clientY)
+      const rect = canvas.getBoundingClientRect()
+      startDrawing(touch.clientX - rect.left, touch.clientY - rect.top)
       e.preventDefault()
     }
 
     const handleTouchMove = (e) => {
       const touch = e.touches[0]
-      drawLine(touch.clientX, touch.clientY)
+      const rect = canvas.getBoundingClientRect()
+      drawLine(touch.clientX - rect.left, touch.clientY - rect.top)
       e.preventDefault()
     }
 
     const handleTouchEnd = () => {
       drawingRef.current = false
-      if (!canvas) return
-      const dataURL = canvas.toDataURL("image/png")
-      const textureLoader = new THREE.TextureLoader()
-      textureLoader.load(dataURL, (texture) => {
-        currentMaterialRef.current = new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          side: THREE.DoubleSide,
-        })
-        isNewARDrawingReadyRef.current = true
-      })
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
     }
 
     window.addEventListener("resize", resizeCanvas)
@@ -121,40 +112,65 @@ export default function CanvasARApp() {
         canvas.removeEventListener("touchend", handleTouchEnd)
       }
     }
-  }, [color, brushSize, isDrawingUIVisible])
+  }, [color, brushSize])
 
+  // AR setup
   useEffect(() => {
-    // AR Setup
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera()
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.xr.enabled = true
-    document.body.appendChild(renderer.domElement)
+
+    // Create a container div for the renderer
+    const rendererContainer = document.createElement("div")
+    rendererContainer.style.position = "fixed"
+    rendererContainer.style.top = "0"
+    rendererContainer.style.left = "0"
+    rendererContainer.style.width = "100%"
+    rendererContainer.style.height = "100%"
+    rendererContainer.style.zIndex = "0"
+    rendererContainer.appendChild(renderer.domElement)
+    document.body.appendChild(rendererContainer)
 
     sceneRef.current = scene
     cameraRef.current = camera
     rendererRef.current = renderer
+
+    // Add some lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
+    scene.add(ambientLight)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    directionalLight.position.set(10, 10, 5)
+    scene.add(directionalLight)
 
     const arButton = ARButton.createButton(renderer, {
       requiredFeatures: ["hit-test"],
       optionalFeatures: ["dom-overlay"],
       domOverlay: { root: document.body },
     })
+
+    arButton.style.position = "fixed"
+    arButton.style.bottom = "20px"
+    arButton.style.left = "50%"
+    arButton.style.transform = "translateX(-50%)"
+    arButton.style.zIndex = "1000"
+
     document.body.appendChild(arButton)
+    arButtonRef.current = arButton
 
     renderer.xr.addEventListener("sessionstart", () => {
-      setIsDrawingUIVisible(true)
-      setIsHamburgerVisible(true)
+      setIsARActive(true)
     })
 
     renderer.xr.addEventListener("sessionend", () => {
-      setIsDrawingUIVisible(false)
-      setIsHamburgerVisible(false)
+      setIsARActive(false)
       const canvas = canvasRef.current
-      const ctx = canvas.getContext("2d")
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      if (canvas) {
+        const ctx = canvas.getContext("2d")
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
       isNewARDrawingReadyRef.current = false
       currentMaterialRef.current = null
       selectedPlaneRef.current = null
@@ -168,6 +184,8 @@ export default function CanvasARApp() {
       if (!isNewARDrawingReadyRef.current || !currentMaterialRef.current) return
 
       const canvas = canvasRef.current
+      if (!canvas) return
+
       const aspect = canvas.width / canvas.height
       const geometry = new THREE.PlaneGeometry(0.4, 0.4 / aspect)
       const plane = new THREE.Mesh(geometry, currentMaterialRef.current.clone())
@@ -190,10 +208,12 @@ export default function CanvasARApp() {
 
     // Touch gestures for AR manipulation
     const handleTouchStart = (e) => {
+      if (!isARActive) return
+
       const touch = e.touches[0]
 
       // Tap-to-select
-      if (!isDrawingUIVisible && e.touches.length === 1) {
+      if (e.touches.length === 1) {
         const ndc = new THREE.Vector2(
           (touch.clientX / window.innerWidth) * 2 - 1,
           -(touch.clientY / window.innerHeight) * 2 + 1,
@@ -206,8 +226,8 @@ export default function CanvasARApp() {
         }
       }
 
-      // Only continue if drawing UI is hidden and we have a selected plane
-      if (!selectedPlaneRef.current || isDrawingUIVisible) return
+      // Only continue if we have a selected plane
+      if (!selectedPlaneRef.current) return
 
       if (e.touches.length === 1) {
         isDraggingRef.current = true
@@ -234,7 +254,7 @@ export default function CanvasARApp() {
     }
 
     const handleTouchMove = (e) => {
-      if (!selectedPlaneRef.current || isDrawingUIVisible) return
+      if (!isARActive || !selectedPlaneRef.current) return
 
       if (e.touches.length === 1 && isDraggingRef.current) {
         const touch = e.touches[0]
@@ -269,11 +289,14 @@ export default function CanvasARApp() {
       window.removeEventListener("touchstart", handleTouchStart)
       window.removeEventListener("touchmove", handleTouchMove)
       window.removeEventListener("touchend", handleTouchEnd)
-      if (renderer.domElement.parentNode) {
-        renderer.domElement.parentNode.removeChild(renderer.domElement)
+      if (rendererContainer.parentNode) {
+        rendererContainer.parentNode.removeChild(rendererContainer)
+      }
+      if (arButton.parentNode) {
+        arButton.parentNode.removeChild(arButton)
       }
     }
-  }, [isDrawingUIVisible])
+  }, [])
 
   const clearCanvas = () => {
     const canvas = canvasRef.current
@@ -311,87 +334,99 @@ export default function CanvasARApp() {
     selectedPlaneRef.current = null
   }
 
-  const toggleDrawingUI = () => {
-    setIsDrawingUIVisible(!isDrawingUIVisible)
-  }
-
   return (
-    <div style={{ margin: 0, overflow: "hidden", height: "100vh", backgroundColor: "black" }}>
-      {isHamburgerVisible && (
+    <div style={{ margin: 0, overflow: "hidden", height: "100vh", backgroundColor: "white" }}>
+      {/* Drawing UI - Always visible */}
+      <div>
         <div
-          onClick={toggleDrawingUI}
           style={{
             position: "fixed",
             top: "10px",
-            right: "10px",
-            fontSize: "28px",
-            zIndex: 3,
+            left: "10px",
+            zIndex: 1001,
             background: "rgba(255,255,255,0.9)",
-            padding: "5px 10px",
+            padding: "10px",
             borderRadius: "8px",
-            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
           }}
         >
-          ☰
-        </div>
-      )}
-
-      {isDrawingUIVisible && (
-        <div>
-          <div
-            style={{
-              position: "fixed",
-              top: "10px",
-              left: "10px",
-              zIndex: 2,
-              background: "rgba(255,255,255,0.9)",
-              padding: "10px",
-              borderRadius: "8px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-            }}
-          >
-            <div style={{ display: "flex", gap: "10px" }}>
-              <label>
-                Color:
-                <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
-              </label>
-              <label>
-                Brush:
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={brushSize}
-                  onChange={(e) => setBrushSize(Number.parseInt(e.target.value))}
-                />
-              </label>
-              <button onClick={enterAR} style={{ padding: "5px 10px" }}>
-                Draw → AR
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={clearCanvas} style={{ padding: "5px 10px" }}>
-                Clear
-              </button>
-              <button onClick={deleteAllPlanes} style={{ padding: "5px 10px" }}>
-                Delete All
-              </button>
-            </div>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              Color:
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              Brush:
+              <input
+                type="range"
+                min="1"
+                max="50"
+                value={brushSize}
+                onChange={(e) => setBrushSize(Number.parseInt(e.target.value))}
+              />
+              <span>{brushSize}</span>
+            </label>
           </div>
-          <canvas
-            ref={canvasRef}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              zIndex: 1,
-              touchAction: "none",
-            }}
-          />
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={enterAR}
+              style={{
+                padding: "8px 12px",
+                backgroundColor: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              Prepare for AR
+            </button>
+            <button
+              onClick={clearCanvas}
+              style={{
+                padding: "8px 12px",
+                backgroundColor: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              Clear
+            </button>
+            <button
+              onClick={deleteAllPlanes}
+              style={{
+                padding: "8px 12px",
+                backgroundColor: "#6c757d",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+              }}
+            >
+              Delete All AR
+            </button>
+          </div>
+          {isARActive && (
+            <div style={{ padding: "5px", backgroundColor: "#d4edda", borderRadius: "4px", fontSize: "14px" }}>
+              AR Active: Tap controller to place drawing
+            </div>
+          )}
         </div>
-      )}
+
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            zIndex: 1,
+            touchAction: "none",
+            border: "1px solid #ccc",
+          }}
+        />
+      </div>
     </div>
   )
 }
