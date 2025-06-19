@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 import { WebGLRenderer } from 'three';
@@ -41,8 +41,11 @@ export default function Home() {
     window.addEventListener('resize', resize);
     resize();
 
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height); // transparent background
+
     function applySettings() {
-      ctx.strokeStyle = currentTool === 'eraser' ? '#fff' : colorPicker.value;
+      ctx.strokeStyle = currentTool === 'eraser' ? 'rgba(0,0,0,0)' : colorPicker.value;
       ctx.lineWidth = brushSize.value;
       ctx.lineCap = brushType.value === 'round' ? 'round' : 'butt';
       ctx.lineJoin = 'round';
@@ -75,19 +78,23 @@ export default function Home() {
     };
     clearBtn.onclick = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0,0,0,0)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       actions.length = 0;
     };
     undoBtn.onclick = () => {
       if (!actions.length) return;
       actions.pop();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0,0,0,0)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       actions.forEach((img) => ctx.putImageData(img, 0, 0));
     };
 
     saveBtn.onclick = () => {
       const link = document.createElement('a');
       link.download = 'drawing.png';
-      link.href = canvas.toDataURL();
+      link.href = canvas.toDataURL('image/png');
       link.click();
     };
 
@@ -161,17 +168,23 @@ export default function Home() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-      light.position.set(0.5, 1, 0.25);
       scene.add(light);
 
       const tex = new THREE.CanvasTexture(canvas);
-      const mat = new THREE.MeshBasicMaterial({ map: tex });
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        alphaTest: 0.01,
+        side: THREE.FrontSide,
+      });
       const geo = new THREE.PlaneGeometry(0.6, 0.4);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.x = -Math.PI / 2;
       scene.add(mesh);
 
-      document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+      document.body.appendChild(
+        ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] })
+      );
 
       renderer.setAnimationLoop(() => {
         tex.needsUpdate = true;
@@ -182,13 +195,9 @@ export default function Home() {
 
   return (
     <>
-      <div id="toolbar">
+      <div id="toolbar" style={{ background: '#444', padding: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px', color: 'white' }}>
         <input type="color" id="colorPicker" defaultValue="#000000" />
-        <select id="brushSize">
-          {[4, 8, 12, 20, 30, 50].map((size) => (
-            <option key={size}>{size}</option>
-          ))}
-        </select>
+        <select id="brushSize">{[4, 8, 12, 20, 30, 50].map(size => <option key={size}>{size}</option>)}</select>
         <select id="brushType">
           <option value="round">Round</option>
           <option value="square">Square</option>
@@ -203,7 +212,7 @@ export default function Home() {
         <button id="save">Save</button>
         <button id="viewAR">View in AR</button>
       </div>
-      <canvas ref={canvasRef} id="canvas" />
+      <canvas ref={canvasRef} id="canvas" style={{ flex: 1, touchAction: 'none', backgroundColor: 'transparent' }} />
       <div ref={arContainerRef} style={{ position: 'absolute', top: 0, left: 0 }} />
     </>
   );
