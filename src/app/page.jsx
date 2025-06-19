@@ -1,15 +1,15 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 
-export default function CanvasDrawingApp() {
+export default function PaintApp() {
   const canvasRef = useRef(null);
-  const [tool, setTool] = useState("pencil");
   const [color, setColor] = useState("#000000");
-  const [fillColor, setFillColor] = useState("#FFFFFF");
-  const [thickness, setThickness] = useState(5);
+  const [fillColor, setFillColor] = useState("#ffffff");
+  const [lineThickness, setLineThickness] = useState(5);
+  const [tool, setTool] = useState("pencil");
   const [isFilled, setIsFilled] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const pointsRef = useRef([]);
+  const points = useRef([]);
   const startPoint = useRef(null);
   const polygonPoints = useRef([]);
 
@@ -18,137 +18,172 @@ export default function CanvasDrawingApp() {
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    document.body.style.overflow = "hidden";
 
-    const draw = (x, y) => {
-      if (tool === "pencil" || tool === "eraser") {
-        const points = pointsRef.current;
-        points.push({ x, y });
-        if (points.length < 2) return;
-        ctx.lineWidth = thickness;
-        ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color;
+    const draw = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (tool === "pencil" && isDrawing) {
+        points.current.push({ x, y });
+        ctx.lineWidth = lineThickness;
+        ctx.strokeStyle = color;
         ctx.lineJoin = ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(points[points.length - 2].x, points[points.length - 2].y);
+        const last = points.current.at(-2);
+        ctx.moveTo(last?.x ?? x, last?.y ?? y);
         ctx.lineTo(x, y);
         ctx.stroke();
-      } else {
+      }
+
+      if (tool === "eraser" && isDrawing) {
+        ctx.clearRect(x - lineThickness / 2, y - lineThickness / 2, lineThickness, lineThickness);
+      }
+
+      if ((tool === "rectangle" || tool === "circle") && isDrawing && startPoint.current) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.lineWidth = thickness;
+        ctx.lineWidth = lineThickness;
         ctx.strokeStyle = color;
-        ctx.fillStyle = fillColor;
-        ctx.lineJoin = ctx.lineCap = "round";
 
-        if (startPoint.current) {
-          const dx = x - startPoint.current.x;
-          const dy = y - startPoint.current.y;
+        const w = x - startPoint.current.x;
+        const h = y - startPoint.current.y;
 
-          if (tool === "rectangle") {
-            if (isFilled) ctx.fillRect(startPoint.current.x, startPoint.current.y, dx, dy);
-            ctx.strokeRect(startPoint.current.x, startPoint.current.y, dx, dy);
-          } else if (tool === "circle") {
-            const radius = Math.hypot(dx, dy);
-            ctx.beginPath();
-            ctx.arc(startPoint.current.x, startPoint.current.y, radius, 0, Math.PI * 2);
-            if (isFilled) ctx.fill();
-            ctx.stroke();
-          } else if (tool === "triangle") {
-            const [p1] = polygonPoints.current;
-            ctx.beginPath();
-            ctx.moveTo(startPoint.current.x, startPoint.current.y);
-            ctx.lineTo(x, y);
-            ctx.lineTo(p1?.x || x, p1?.y || y);
-            ctx.closePath();
-            if (isFilled) ctx.fill();
-            ctx.stroke();
+        if (tool === "rectangle") {
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fillRect(startPoint.current.x, startPoint.current.y, w, h);
           }
+          ctx.strokeRect(startPoint.current.x, startPoint.current.y, w, h);
+        }
+
+        if (tool === "circle") {
+          const radius = Math.sqrt(w * w + h * h);
+          ctx.beginPath();
+          ctx.arc(startPoint.current.x, startPoint.current.y, radius, 0, Math.PI * 2);
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+          }
+          ctx.stroke();
         }
       }
     };
 
-    const handleDown = (e) => {
+    const handleMouseDown = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
       setIsDrawing(true);
-      const t = e.touches?.[0] || e;
-      const x = t.clientX;
-      const y = t.clientY;
 
-      if (tool === "pencil" || tool === "eraser") {
-        pointsRef.current = [{ x, y }];
-      } else if (tool === "rectangle" || tool === "circle") {
+      if (tool === "rectangle" || tool === "circle") {
         startPoint.current = { x, y };
-      } else if (tool === "triangle") {
+      }
+
+      if (tool === "text") {
+        const text = prompt("Enter text:");
+        if (text) {
+          ctx.fillStyle = color;
+          ctx.font = "30px Arial";
+          ctx.fillText(text, x, y);
+        }
+      }
+
+      if (tool === "triangle") {
         polygonPoints.current.push({ x, y });
-        startPoint.current = { x, y };
+        if (polygonPoints.current.length === 3) {
+          ctx.beginPath();
+          ctx.moveTo(polygonPoints.current[0].x, polygonPoints.current[0].y);
+          ctx.lineTo(polygonPoints.current[1].x, polygonPoints.current[1].y);
+          ctx.lineTo(polygonPoints.current[2].x, polygonPoints.current[2].y);
+          ctx.closePath();
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+          }
+          ctx.stroke();
+          polygonPoints.current = [];
+        }
+      }
+
+      if (tool === "polygon") {
+        polygonPoints.current.push({ x, y });
+        if (polygonPoints.current.length >= 2) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.beginPath();
+          ctx.moveTo(polygonPoints.current[0].x, polygonPoints.current[0].y);
+          polygonPoints.current.forEach((pt) => ctx.lineTo(pt.x, pt.y));
+          ctx.closePath();
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+          }
+          ctx.stroke();
+        }
       }
     };
 
-    const handleMove = (e) => {
-      if (!isDrawing) return;
-      const t = e.touches?.[0] || e;
-      draw(t.clientX, t.clientY);
-    };
-
-    const handleUp = () => {
+    const handleMouseUp = () => {
       setIsDrawing(false);
-      pointsRef.current = [];
       startPoint.current = null;
-      if (tool !== "triangle") polygonPoints.current = [];
+      points.current = [];
     };
 
-    canvas.addEventListener("mousedown", handleDown);
-    canvas.addEventListener("mousemove", handleMove);
-    canvas.addEventListener("mouseup", handleUp);
-    canvas.addEventListener("touchstart", handleDown);
-    canvas.addEventListener("touchmove", handleMove);
-    canvas.addEventListener("touchend", handleUp);
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      canvas.removeEventListener("mousedown", handleDown);
-      canvas.removeEventListener("mousemove", handleMove);
-      canvas.removeEventListener("mouseup", handleUp);
-      canvas.removeEventListener("touchstart", handleDown);
-      canvas.removeEventListener("touchmove", handleMove);
-      canvas.removeEventListener("touchend", handleUp);
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      canvas.removeEventListener("mousemove", draw);
+      canvas.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [tool, color, thickness, fillColor, isFilled]);
+  }, [tool, color, fillColor, lineThickness, isFilled, isDrawing]);
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    points.current = [];
+    polygonPoints.current = [];
   };
 
   return (
-    <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
-      <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0 }} />
-
-      <div style={{
-        position: "absolute", top: 10, left: 10, background: "#fff",
-        padding: "10px", borderRadius: "8px", display: "grid", gap: "10px",
-        fontFamily: "sans-serif", zIndex: 10
-      }}>
-        <div>
-          <button onClick={() => setTool(tool === "pencil" ? "eraser" : "pencil")}>
-            {tool === "pencil" ? "Switch to Eraser" : "Switch to Pencil"}
-          </button>
+    <div>
+      <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full" />
+      <div className="absolute top-4 left-4 bg-white bg-opacity-80 p-4 rounded-lg shadow-lg max-w-xs z-10">
+        <h2 className="text-xl font-bold mb-3">Paint Controls</h2>
+        <div className="mb-2">
+          <label className="block">Stroke Color</label>
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full" />
         </div>
-        <label>Stroke Color: <input type="color" value={color} onChange={e => setColor(e.target.value)} /></label>
-        <label>Fill Color: <input type="color" value={fillColor} onChange={e => setFillColor(e.target.value)} /></label>
-        <label>
-          Thickness:
-          <input type="range" min="1" max="30" value={thickness} onChange={e => setThickness(+e.target.value)} />
-          {thickness}
-        </label>
-        <div>
-          Tool:
-          {["pencil", "rectangle", "circle", "triangle"].map(t => (
-            <button key={t} disabled={tool === t} onClick={() => setTool(t)} style={{ margin: "0 4px" }}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+        <div className="mb-2">
+          <label className="block">Fill Color</label>
+          <input type="color" value={fillColor} onChange={(e) => setFillColor(e.target.value)} className="w-full" />
         </div>
-        <label><input type="checkbox" checked={isFilled} onChange={e => setIsFilled(e.target.checked)} /> Fill?</label>
-        <button onClick={clearCanvas} style={{ background: "#f66", color: "#fff" }}>Clear Canvas</button>
+        <div className="mb-2">
+          <label className="block">Thickness</label>
+          <input type="range" min="1" max="30" value={lineThickness} onChange={(e) => setLineThickness(parseInt(e.target.value))} className="w-full" />
+        </div>
+        <div className="mb-2">
+          <label className="block">Tool</label>
+          <select value={tool} onChange={(e) => setTool(e.target.value)} className="w-full">
+            <option value="pencil">Pencil</option>
+            <option value="eraser">Eraser</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+            <option value="triangle">Triangle</option>
+            <option value="polygon">Polygon</option>
+            <option value="text">Text</option>
+          </select>
+        </div>
+        <div className="mb-2">
+          <label>
+            <input type="checkbox" checked={isFilled} onChange={(e) => setIsFilled(e.target.checked)} className="mr-2" />
+            Fill Shape
+          </label>
+        </div>
+        <button onClick={clearCanvas} className="mt-2 w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600">
+          Clear Canvas
+        </button>
       </div>
     </div>
   );
