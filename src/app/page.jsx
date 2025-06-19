@@ -24,35 +24,41 @@ export default function ARScene() {
 
     const controls = new OrbitControls(camera, renderer.domElement);
 
-    // 👉 Create a vertical plane when user taps
-    const createPlane = (position, quaternion) => {
-      const geometry = new THREE.PlaneGeometry(1, 0.7);
-      const material = new THREE.MeshBasicMaterial({ color: 0xff69b4, side: THREE.DoubleSide });
+    const textureURL = sessionStorage.getItem('drawingImage'); // 👈 Get drawing
+    const loader = new THREE.TextureLoader();
+
+    const createImagePlane = (texture, position, quaternion) => {
+      const geometry = new THREE.PlaneGeometry(1, 0.7); // Width x Height
+      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
       const plane = new THREE.Mesh(geometry, material);
       plane.position.copy(position);
-      plane.quaternion.copy(quaternion); // So it faces the same way as the camera
+      plane.quaternion.copy(quaternion); // Face same direction as camera
       scene.add(plane);
     };
 
-    // Handle tap in AR
-    renderer.xr.addEventListener('sessionstart', () => {
-      const session = renderer.xr.getSession();
-      session.addEventListener('select', () => {
-        const referenceSpace = renderer.xr.getReferenceSpace();
-        const viewerPose = renderer.xr.getCamera(camera).matrixWorld;
+    if (textureURL) {
+      loader.load(textureURL, (texture) => {
+        renderer.xr.addEventListener('sessionstart', () => {
+          const session = renderer.xr.getSession();
 
-        const position = new THREE.Vector3();
-        const quaternion = new THREE.Quaternion();
+          session.addEventListener('select', () => {
+            const cameraObj = renderer.xr.getCamera(camera);
 
-        const matrix = new THREE.Matrix4().fromArray(viewerPose.elements);
-        matrix.decompose(position, quaternion, new THREE.Vector3());
+            const position = new THREE.Vector3();
+            const quaternion = new THREE.Quaternion();
 
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
-        position.add(forward.multiplyScalar(1)); // 1 meter in front
+            cameraObj.matrixWorld.decompose(position, quaternion, new THREE.Vector3());
 
-        createPlane(position, quaternion);
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
+            position.add(forward.multiplyScalar(1)); // Place 1 meter in front
+
+            createImagePlane(texture, position, quaternion);
+          });
+        });
       });
-    });
+    } else {
+      console.warn("No drawing image found in sessionStorage");
+    }
 
     renderer.setAnimationLoop(() => {
       controls.update();
