@@ -4,8 +4,6 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 
 export default function ARScene() {
   const canvasRef = useRef(null);
@@ -19,7 +17,6 @@ export default function ARScene() {
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-    camera.position.set(0, 1.6, 3);
     scene.add(camera);
 
     const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
@@ -27,14 +24,35 @@ export default function ARScene() {
 
     const controls = new OrbitControls(camera, renderer.domElement);
 
-    // ✅ Vertical plane (like a poster)
-    const geometry = new THREE.PlaneGeometry(1, 0.7); // width, height
-    const material = new THREE.MeshBasicMaterial({ color: 0xff69b4, side: THREE.DoubleSide });
-    const plane = new THREE.Mesh(geometry, material);
+    // 👉 Create a vertical plane when user taps
+    const createPlane = (position, quaternion) => {
+      const geometry = new THREE.PlaneGeometry(1, 0.7);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff69b4, side: THREE.DoubleSide });
+      const plane = new THREE.Mesh(geometry, material);
+      plane.position.copy(position);
+      plane.quaternion.copy(quaternion); // So it faces the same way as the camera
+      scene.add(plane);
+    };
 
-    plane.position.set(0, 1.5, -1); // 1.5 meters up, 1 meter in front
-    plane.rotation.y = 0; // Facing camera (no rotation needed for vertical)
-    scene.add(plane);
+    // Handle tap in AR
+    renderer.xr.addEventListener('sessionstart', () => {
+      const session = renderer.xr.getSession();
+      session.addEventListener('select', () => {
+        const referenceSpace = renderer.xr.getReferenceSpace();
+        const viewerPose = renderer.xr.getCamera(camera).matrixWorld;
+
+        const position = new THREE.Vector3();
+        const quaternion = new THREE.Quaternion();
+
+        const matrix = new THREE.Matrix4().fromArray(viewerPose.elements);
+        matrix.decompose(position, quaternion, new THREE.Vector3());
+
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
+        position.add(forward.multiplyScalar(1)); // 1 meter in front
+
+        createPlane(position, quaternion);
+      });
+    });
 
     renderer.setAnimationLoop(() => {
       controls.update();
