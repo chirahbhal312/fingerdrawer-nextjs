@@ -35,9 +35,9 @@ export default function PaintingApp() {
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
-    ctx.fillStyle = "white"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    console.log("Canvas reset with white background")
+    // Make canvas transparent
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    console.log("Canvas initialized transparent")
   }, [])
 
   useEffect(() => {
@@ -87,9 +87,10 @@ export default function PaintingApp() {
 
   const clearCanvas = () => {
     console.log("🧼 clearCanvas")
-    const ctx = canvasRef.current.getContext("2d")
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-console.log("Canvas cleared to transparent")
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    console.log("Canvas cleared to transparent")
   }
 
   const startARScene = () => {
@@ -123,7 +124,7 @@ console.log("Canvas cleared to transparent")
       const height = width / aspect
 
       const geometry = new THREE.PlaneGeometry(width, height)
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
       const plane = new THREE.Mesh(geometry, material)
       plane.position.set(0, 0, -0.5)
       scene.add(plane)
@@ -145,8 +146,7 @@ console.log("Canvas cleared to transparent")
 
   const saveAndStartAR = () => {
     console.log("💾 saveAndStartAR triggered")
-    const canvas = canvasRef.current
-    const dataURL = canvas.toDataURL("image/png")
+    const dataURL = canvasRef.current.toDataURL("image/png")
     console.log("Data URL (start):", dataURL.slice(0, 50), "...")
     sessionStorage.setItem("drawingImage", dataURL)
     console.log("Image saved to sessionStorage")
@@ -154,7 +154,7 @@ console.log("Canvas cleared to transparent")
   }
 
   useEffect(() => {
-    console.log("📍 Click-outside popover listeners setup")
+    console.log("📍 click-outside popover listeners setup")
     const onClickOutside = e => {
       if (!e.target.closest("#color-popover")) setShowColorPopover(false)
       if (!e.target.closest("#settings-popover")) setShowSettingsPopover(false)
@@ -202,8 +202,12 @@ console.log("Canvas cleared to transparent")
       <div className="bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex items-center gap-2">
-            <button onClick={() => { console.log("Brush tool"); setTool("brush") }} className={`p-2 rounded ${tool === "brush" ? "bg-blue-500 text-white" : "border"}`} disabled={!isStarted}><Brush /></button>
-            <button onClick={() => { console.log("Eraser tool"); setTool("eraser") }} className={`p-2 rounded ${tool === "eraser" ? "bg-blue-500 text-white" : "border"}`} disabled={!isStarted}><Eraser /></button>
+            <button onClick={() => { console.log("Brush tool selected"); setTool("brush") }} className={`p-2 rounded ${tool === "brush" ? "bg-blue-500 text-white" : "border"}`} disabled={!isStarted}>
+              <Brush />
+            </button>
+            <button onClick={() => { console.log("Eraser tool selected"); setTool("eraser") }} className={`p-2 rounded ${tool === "eraser" ? "bg-blue-500 text-white" : "border"}`} disabled={!isStarted}>
+              <Eraser />
+            </button>
             <div className="relative" id="color-popover">
               <button onClick={() => { console.log("Toggle color picker"); setShowColorPopover(!showColorPopover) }} className="p-2 border rounded" disabled={!isStarted}><Palette /></button>
               {showColorPopover && (
@@ -231,7 +235,7 @@ console.log("Canvas cleared to transparent")
             {showSettingsPopover && (
               <div className="absolute bg-white p-4 rounded shadow mt-2 w-64 right-0">
                 <label className="block">Brush size: {brushSize}px</label>
-                <input type="range" min="1" max="50" value={brushSize} onChange={e => { console.log(`Brush size: ${e.target.value}`); setBrushSize(+e.target.value) }} className="w-full" />
+                <input type="range" min="1" max="50" value={brushSize} onChange={e => { console.log(`Brush size changed: ${e.target.value}`); setBrushSize(+e.target.value) }} className="w-full" />
               </div>
             )}
           </div>
