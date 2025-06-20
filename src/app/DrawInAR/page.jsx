@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Lazy-load Three.js modules to support import maps in browser
+// Dynamically import Three.js modules
 let THREE, ARButton;
 (async () => {
   THREE = await import('three');
@@ -55,74 +55,68 @@ export default function HomePage() {
     };
   };
 
-const initAR = async (dataUrl) => {
-  if (!THREE || !ARButton) return;
+  const initAR = async (dataUrl) => {
+    if (!THREE || !ARButton) return;
 
-  const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: true,
-    canvas: webglRef.current,
-  });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.xr.enabled = true;
-
-  document.body.appendChild(ARButton.createButton(renderer, {
-    requiredFeatures: ['hit-test'],
-    optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
-    domOverlay: { root: document.getElementById('ar-overlay-container') }
-  }));
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera();
-
-  const texture = new THREE.TextureLoader().load(dataUrl);
-  const aspect = 1; // Default aspect in case image not loaded
-  const planeGeometry = new THREE.PlaneGeometry(1 * aspect, 1);
-  const planeMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-
-  let hitTestSource = null;
-  let hasPlaced = false;
-
-  renderer.xr.addEventListener('sessionstart', async () => {
-    const session = renderer.xr.getSession();
-    const viewerSpace = await session.requestReferenceSpace('viewer');
-    hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-    session.addEventListener('select', (event) => {
-      if (!hasPlaced && hitTestSource) {
-        const frame = event.frame;
-        const referenceSpace = renderer.xr.getReferenceSpace();
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const pose = hit.getPose(referenceSpace);
-
-          plane.position.set(
-            pose.transform.position.x,
-            pose.transform.position.y,
-            pose.transform.position.z
-          );
-          plane.quaternion.set(
-            pose.transform.orientation.x,
-            pose.transform.orientation.y,
-            pose.transform.orientation.z,
-            pose.transform.orientation.w
-          );
-
-          scene.add(plane);
-          hasPlaced = true;
-        }
-      }
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      canvas: webglRef.current,
     });
-  });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
 
-  renderer.setAnimationLoop((timestamp, frame) => {
-    renderer.render(scene, camera);
-  });
-};
+    document.body.appendChild(ARButton.createButton(renderer, {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
+      domOverlay: { root: document.getElementById('ar-overlay-container') }
+    }));
 
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+
+    const texture = new THREE.TextureLoader().load(dataUrl);
+    const aspect = 1;
+    const geometry = new THREE.PlaneGeometry(1 * aspect, 1);
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    let hitTestSource = null;
+    let hasPlaced = false;
+
+    renderer.xr.addEventListener('sessionstart', async () => {
+      const session = renderer.xr.getSession();
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+      session.addEventListener('select', (event) => {
+        if (!hasPlaced && hitTestSource) {
+          const frame = event.frame;
+          const refSpace = renderer.xr.getReferenceSpace();
+          const hits = frame.getHitTestResults(hitTestSource);
+
+          if (hits.length > 0) {
+            const hit = hits[0];
+            const pose = hit.getPose(refSpace);
+
+            mesh.position.set(
+              pose.transform.position.x,
+              pose.transform.position.y,
+              pose.transform.position.z
+            );
+            mesh.quaternion.set(
+              pose.transform.orientation.x,
+              pose.transform.orientation.y,
+              pose.transform.orientation.z,
+              pose.transform.orientation.w
+            );
+
+            scene.add(mesh);
+            hasPlaced = true;
+          }
+        }
+      });
+    });
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
@@ -131,7 +125,6 @@ const initAR = async (dataUrl) => {
 
   return (
     <>
-      {/* DOM Overlay container that includes your 2D drawing canvas */}
       <div id="ar-overlay-container" style={overlayStyle}>
         <canvas
           ref={canvasRef}
@@ -152,8 +145,6 @@ const initAR = async (dataUrl) => {
           onTouchEnd={stopDrawing}
         />
       </div>
-
-      {/* WebGL canvas rendered by Three.js */}
       <canvas ref={webglRef} style={styles.webglCanvas} />
     </>
   );
