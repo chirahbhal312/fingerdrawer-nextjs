@@ -2,31 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export default function Home() {
+// Dynamic import to use import maps with Three.js
+let THREE, ARButton;
+(async () => {
+  THREE = await import('three');
+  ARButton = (await import('three/examples/jsm/webxr/ARButton.js')).ARButton;
+})();
+
+export default function HomePage() {
   const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [ctx, setCtx] = useState(null);
+  const [isDrawing, setIsDrawing] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight * 0.75;
-
     const context = canvas.getContext('2d');
     context.lineWidth = 2;
     context.lineCap = 'round';
     context.strokeStyle = '#000000';
     setCtx(context);
-
-    const resizeHandler = () => {
-      const image = context.getImageData(0, 0, canvas.width, canvas.height);
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight * 0.75;
-      context.putImageData(image, 0, 0);
-    };
-
-    window.addEventListener('resize', resizeHandler);
-    return () => window.removeEventListener('resize', resizeHandler);
   }, []);
 
   const startDrawing = (x, y) => {
@@ -44,6 +40,10 @@ export default function Home() {
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    if (canvasRef.current) {
+      const dataUrl = canvasRef.current.toDataURL();
+      initAR(dataUrl);
+    }
   };
 
   const getTouchPos = (e) => {
@@ -52,6 +52,33 @@ export default function Home() {
       x: e.touches[0].clientX - rect.left,
       y: e.touches[0].clientY - rect.top,
     };
+  };
+
+  const initAR = async (dataUrl) => {
+    if (!THREE || !ARButton) return;
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    container.appendChild(renderer.domElement);
+    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+
+    const texture = new THREE.TextureLoader().load(dataUrl);
+    const geometry = new THREE.PlaneGeometry(1, 0.75);
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const plane = new THREE.Mesh(geometry, material);
+    plane.position.set(0, 0, -1);
+    scene.add(plane);
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
   };
 
   return (
@@ -92,6 +119,6 @@ const styles = {
     width: '100%',
     background: 'transparent',
     cursor: 'crosshair',
-    touchAction: 'none', // Prevents browser gestures while drawing
+    touchAction: 'none',
   },
 };
