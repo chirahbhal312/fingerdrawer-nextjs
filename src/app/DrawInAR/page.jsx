@@ -38,7 +38,6 @@ export default function HomePage() {
       const { ARButton } = await import('three/examples/jsm/webxr/ARButton.js');
       arSession.current.THREE = THREE;
       arSession.current.ARButton = ARButton;
-
       if (webglRef.current) initARSession();
     })();
   }, []);
@@ -58,28 +57,19 @@ export default function HomePage() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera();
 
-    arSession.current = {
-      ...arSession.current,
-      initialized: true,
-      renderer,
-      scene,
-      camera,
-    };
+    arSession.current = { ...arSession.current, initialized: true, renderer, scene, camera };
 
     const arButton = ARButton.createButton(renderer, {
       requiredFeatures: ['local'],
       optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
       domOverlay: { root: document.getElementById('ar-overlay-container') }
     });
-
     document.body.appendChild(arButton);
 
     renderer.xr.addEventListener('sessionstart', () => setInAR(true));
     renderer.xr.addEventListener('sessionend', () => setInAR(false));
 
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
-    });
+    renderer.setAnimationLoop(() => renderer.render(scene, camera));
   };
 
   const placeDrawingInFront = (dataUrl) => {
@@ -88,10 +78,10 @@ export default function HomePage() {
       const aspect = texture.image.width / texture.image.height;
       const height = 0.75;
       const width = height * aspect;
-      const geometry = new THREE.PlaneGeometry(width, height);
-      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-      const mesh = new THREE.Mesh(geometry, material);
-
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({ map: texture, transparent: true })
+      );
       mesh.position.set(0, 0, -1);
       mesh.quaternion.set(0, 0, 0, 1);
 
@@ -109,9 +99,7 @@ export default function HomePage() {
 
   const clearAllDrawings = () => {
     const { scene } = arSession.current;
-    drawings.forEach(group => {
-      scene.remove(group);
-    });
+    drawings.forEach(group => scene.remove(group));
     setDrawings([]);
   };
 
@@ -121,13 +109,7 @@ export default function HomePage() {
     ctx.moveTo(x, y);
     setIsDrawing(true);
   };
-
-  const draw = (x, y) => {
-    if (!isDrawing || !ctx) return;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
+  const draw = (x, y) => { if (isDrawing && ctx) ctx.lineTo(x, y), ctx.stroke(); };
   const stopDrawing = () => {
     if (!inAR || !ctx || !canvasRef.current) return;
     setIsDrawing(false);
@@ -135,13 +117,9 @@ export default function HomePage() {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     placeDrawingInFront(dataUrl);
   };
-
-  const getTouchPos = (e) => {
+  const getTouchPos = e => {
     const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: e.touches[0].clientX - rect.left,
-      y: e.touches[0].clientY - rect.top,
-    };
+    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
   };
 
   return (
@@ -155,24 +133,18 @@ export default function HomePage() {
             <canvas
               ref={canvasRef}
               style={styles.canvas}
-              onMouseDown={(e) => startDrawing(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
-              onMouseMove={(e) => draw(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+              onMouseDown={e => startDrawing(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+              onMouseMove={e => draw(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
               onMouseUp={stopDrawing}
               onMouseLeave={stopDrawing}
-              onTouchStart={(e) => {
-                const { x, y } = getTouchPos(e);
-                startDrawing(x, y);
-              }}
-              onTouchMove={(e) => {
-                e.preventDefault();
-                const { x, y } = getTouchPos(e);
-                draw(x, y);
-              }}
+              onTouchStart={e => { const { x, y } = getTouchPos(e); startDrawing(x, y); }}
+              onTouchMove={e => { e.preventDefault(); const { x, y } = getTouchPos(e); draw(x, y); }}
               onTouchEnd={stopDrawing}
             />
           </>
         )}
       </div>
+
       <canvas ref={webglRef} style={styles.webglCanvas} />
     </>
   );
@@ -185,7 +157,7 @@ const overlayStyle = {
   width: '100vw',
   height: '100vh',
   zIndex: 10,
-  pointerEvents: 'none',
+  pointerEvents: 'auto', // allow the overlay to receive input
 };
 
 const styles = {
@@ -195,6 +167,10 @@ const styles = {
     background: 'transparent',
     touchAction: 'none',
     cursor: 'crosshair',
+    zIndex: 15,
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   webglCanvas: {
     position: 'absolute',
@@ -209,12 +185,11 @@ const styles = {
     top: 10,
     left: 10,
     zIndex: 20,
-    pointerEvents: 'auto',
   },
   button: {
     padding: '10px 15px',
     fontSize: '16px',
-    background: 'rgba(255, 255, 255, 0.9)',
+    background: 'rgba(255,255,255,0.9)',
     border: '1px solid #ccc',
     borderRadius: '4px',
     cursor: 'pointer',
