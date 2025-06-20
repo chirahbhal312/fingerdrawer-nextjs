@@ -13,6 +13,7 @@ export default function HomePage() {
   const clearButtonRef = useRef(null);
   const enterARButtonRef = useRef(null);
   const deleteAllPlanesButtonRef = useRef(null);
+  const overlayRef = useRef(null);
 
   const [drawing, setDrawing] = useState(false);
   const [lastPos, setLastPos] = useState([0, 0]);
@@ -112,7 +113,7 @@ export default function HomePage() {
       const arButton = ARButton.createButton(renderer, {
         requiredFeatures: ["hit-test"],
         optionalFeatures: ["dom-overlay"],
-        domOverlay: { root: document.body },
+        domOverlay: { root: overlayRef.current },
       });
       document.body.appendChild(arButton);
 
@@ -155,10 +156,10 @@ export default function HomePage() {
     initAR();
 
     return () => window.removeEventListener("resize", resizeCanvas);
-  }, [drawing, lastPos, isNewARDrawingReady, currentMaterial]);
+  }, [drawing, lastPos, isNewARDrawingReady, currentMaterial, sceneState]);
 
   return (
-    <>
+    <div ref={overlayRef} id="overlay-root">
       <div ref={hamburgerRef} className="hamburger hidden">☰</div>
       <div ref={drawingUIRef} id="drawingUI" className="hidden">
         <div className="controls">
@@ -215,6 +216,6 @@ export default function HomePage() {
           padding: 5px 10px;
         }
       `}</style>
-    </>
+    </div>
   );
 }
