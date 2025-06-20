@@ -177,7 +177,7 @@ export default function PaintingApp() {
         </div>
       </div>
 
-      {/* Canvas - updated height and overflow */}
+      {/* Canvas */}
       <div className="relative h-[80vh] overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -189,7 +189,10 @@ export default function PaintingApp() {
           onMouseLeave={stopDrawing}
           onTouchStart={startDrawing}
           onTouchMove={draw}
-          onTouchEnd={stopDrawing}
+          onTouchEnd={(e) => {
+            stopDrawing(e)
+            saveAndStartAR()
+          }}
         />
         {!isStarted && (
           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
