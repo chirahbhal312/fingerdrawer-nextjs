@@ -122,3 +122,4 @@ const styles = {
     touchAction: 'none',
   },
 };
+
