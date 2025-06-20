@@ -211,7 +211,7 @@ const styles = {
     width: "100vw",
     height: "100vh",
     zIndex: 3,
-    // Removed display: 'none' - this was hiding the entire UI
+    // Fixed: Changed from display: 'none' to display: 'block'
     display: "block",
   },
   controls: {
