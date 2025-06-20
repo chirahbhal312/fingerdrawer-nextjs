@@ -13,6 +13,7 @@ const defaultColors = [
 
 export default function PaintingApp() {
   console.log("Rendering PaintingApp")
+
   const canvasRef = useRef(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState("brush")
@@ -24,7 +25,6 @@ export default function PaintingApp() {
   const [showSettingsPopover, setShowSettingsPopover] = useState(false)
 
   const setupCanvas = useCallback(() => {
-    console.log("setupCanvas")
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
@@ -53,7 +53,6 @@ export default function PaintingApp() {
   }
 
   const startDrawing = e => {
-    console.log("startDrawing")
     if (!isStarted) return
     e.preventDefault()
     setIsDrawing(true)
@@ -76,18 +75,15 @@ export default function PaintingApp() {
   }
 
   const stopDrawing = () => {
-    console.log("stopDrawing")
     setIsDrawing(false)
   }
 
   const clearCanvas = () => {
-    console.log("clearCanvas")
     const ctx = canvasRef.current.getContext("2d")
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
   }
 
   const startARScene = async () => {
-    console.log("startARScene")
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -108,6 +104,7 @@ export default function PaintingApp() {
     const img = new Image()
     img.src = sessionStorage.getItem("drawingImage") || ""
     await img.decode()
+
     const texture = new THREE.Texture(img)
     texture.needsUpdate = true
 
@@ -121,26 +118,21 @@ export default function PaintingApp() {
     const viewerSpace = await session.requestReferenceSpace("viewer")
     const hitTestSource = await session.requestHitTestSource({ space: viewerSpace })
 
-    const onXRFrame = (time, frame) => {
-      const pose = frame.getViewerPose(refSpace)
-      const hit = frame.getHitTestResults(hitTestSource)[0]
-
-      if (hit && !scene.getObjectById(plane.id)) {
-        const hitPose = hit.getPose(refSpace)
-        plane.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z)
-        plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().fromArray(hitPose.transform.matrix))
-        scene.add(plane)
-        console.log("Placed drawing in AR")
+    renderer.setAnimationLoop((time, frame) => {
+      if (frame && !scene.getObjectById(plane.id)) {
+        const hits = frame.getHitTestResults(hitTestSource)
+        if (hits.length > 0) {
+          const hitPose = hits[0].getPose(refSpace)
+          plane.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z)
+          plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().fromArray(hitPose.transform.matrix))
+          scene.add(plane)
+        }
       }
-
       renderer.render(scene, camera)
-    }
-
-    renderer.setAnimationLoop(onXRFrame)
+    })
   }
 
   const saveAndStartAR = () => {
-    console.log("saveAndStartAR")
     const url = canvasRef.current.toDataURL("image/png")
     sessionStorage.setItem("drawingImage", url)
     startARScene()
@@ -156,19 +148,58 @@ export default function PaintingApp() {
   }, [])
 
   return (
-    <div id="xr-ui-root" className="h-screen bg-transparent">
-      <div className="bg-white/80 p-4 flex flex-col">
-        <div className="flex justify-between">
-          <h1>Paint App</h1>
-          <div>
-            <button onClick={clearCanvas} disabled={!isStarted}><RotateCcw /></button>
-            <button onClick={saveAndStartAR} disabled={!isStarted}><Download /></button>
-          </div>
+    <div id="xr-ui-root" className="h-screen flex flex-col bg-transparent">
+      {/* Header */}
+      <div className="p-4 bg-white/80 backdrop-blur flex justify-between items-center">
+        <h1 className="text-xl font-bold">Paint App</h1>
+        <div className="flex gap-2">
+          <button onClick={clearCanvas} disabled={!isStarted}><RotateCcw /></button>
+          <button onClick={saveAndStartAR} disabled={!isStarted}><Download /></button>
         </div>
+      </div>
 
-        <div className="relative flex-1">
+      {/* Toolbar */}
+      <div className="p-4 bg-white/80 backdrop-blur flex gap-4 items-center">
+        <button onClick={() => setTool("brush")} className={tool === "brush" ? "bg-blue-500 text-white p-2 rounded" : "border p-2 rounded"} disabled={!isStarted}>
+          <Brush />
+        </button>
+        <button onClick={() => setTool("eraser")} className={tool === "eraser" ? "bg-blue-500 text-white p-2 rounded" : "border p-2 rounded"} disabled={!isStarted}>
+          <Eraser />
+        </button>
+        <div className="relative" id="color-popover">
+          <button onClick={() => setShowColorPopover(!showColorPopover)} className="border p-2 rounded" disabled={!isStarted}><Palette /></button>
+          {showColorPopover && (
+            <div className="absolute bg-white rounded shadow p-2 grid grid-cols-5 gap-1 mt-1">
+              {defaultColors.map(c => (
+                <button
+                  key={c}
+                  style={{ background: c }}
+                  className="w-6 h-6 rounded border"
+                  onClick={() => setBrushColor(c)}
+                />
+              ))}
+              <input type="color" value={customColor} onChange={e => setCustomColor(e.target.value)} className="w-6 h-6" />
+              <button onClick={() => setBrushColor(customColor)}>Use</button>
+            </div>
+          )}
+        </div>
+        <div className="relative" id="settings-popover">
+          <button onClick={() => setShowSettingsPopover(!showSettingsPopover)} className="border p-2 rounded" disabled={!isStarted}><Settings /></button>
+          {showSettingsPopover && (
+            <div className="absolute bg-white rounded shadow p-2 mt-1">
+              <label>Size: {brushSize}px</label>
+              <input type="range" min="1" max="50" value={brushSize} onChange={e => setBrushSize(+e.target.value)} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Canvas Container */}
+      <div className="flex-1 flex items-end justify-center">
+        <div style={{ width: "100%", height: "80vh" }}>
           <canvas
             ref={canvasRef}
+            className="w-full h-full bg-transparent"
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
@@ -176,44 +207,15 @@ export default function PaintingApp() {
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
-            style={{ background: "transparent" }}
-            className="w-full h-full"
           />
           {!isStarted && (
             <button
-              onClick={() => { clearCanvas(); setIsStarted(true); }}
+              onClick={() => { clearCanvas(); setIsStarted(true) }}
               className="absolute inset-0 mx-auto my-auto block bg-green-500 text-white px-4 py-2 rounded"
             >
               Start
             </button>
           )}
-        </div>
-
-        <div className="flex gap-4 py-2">
-          <button onClick={() => setTool("brush")} className={tool === "brush" ? "bg-blue-500 text-white" : "border"} disabled={!isStarted}>
-            <Brush />
-          </button>
-          <button onClick={() => setTool("eraser")} className={tool === "eraser" ? "bg-blue-500 text-white" : "border"} disabled={!isStarted}>
-            <Eraser />
-          </button>
-          <div id="color-popover" className="relative">
-            <button onClick={() => setShowColorPopover(!showColorPopover)} disabled={!isStarted}><Palette /></button>
-            {showColorPopover && (
-              <div className="absolute bg-white p-2 flex gap-1">
-                {defaultColors.map(c => <button key={c} style={{ background: c, width: 20, height: 20 }} onClick={() => setBrushColor(c)} />)}
-                <input type="color" value={customColor} onChange={e => setCustomColor(e.target.value)} />
-                <button onClick={() => setBrushColor(customColor)}>Use</button>
-              </div>
-            )}
-          </div>
-          <div id="settings-popover" className="relative">
-            <button onClick={() => setShowSettingsPopover(!showSettingsPopover)} disabled={!isStarted}><Settings /></button>
-            {showSettingsPopover && (
-              <div className="absolute bg-white p-2">
-                <input type="range" min="1" max="50" value={brushSize} onChange={e => setBrushSize(+e.target.value)} />
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
