@@ -55,31 +55,37 @@ export default function HomePage() {
   };
 
   const initAR = async (dataUrl) => {
-    if (!THREE || !ARButton) return;
+  if (!THREE || !ARButton) return;
 
-    const container = document.createElement('div');
-    document.body.appendChild(container);
+  const container = document.createElement('div');
+  document.body.appendChild(container);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true;
-    container.appendChild(renderer.domElement);
-    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  container.appendChild(renderer.domElement);
+  document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
 
-    const texture = new THREE.TextureLoader().load(dataUrl);
-    const geometry = new THREE.PlaneGeometry(1, 0.75);
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    const plane = new THREE.Mesh(geometry, material);
-    plane.position.set(0, 0, -1);
-    scene.add(plane);
+  const texture = new THREE.TextureLoader().load(dataUrl, () => {
+    const aspect = texture.image.width / texture.image.height;
+    const height = 0.75;
+    const width = height * aspect;
 
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
-    });
-  };
+    const geometry = new THREE.PlaneGeometry(width, height);
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(0, 0, -1);
+    scene.add(mesh);
+  });
+
+  renderer.setAnimationLoop(() => {
+    renderer.render(scene, camera);
+  });
+};
+
 
   return (
     <main style={styles.main}>
