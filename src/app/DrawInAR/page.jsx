@@ -29,21 +29,29 @@ export default function Home() {
     return () => window.removeEventListener('resize', resizeHandler);
   }, []);
 
-  const handleMouseDown = (e) => {
+  const startDrawing = (x, y) => {
     if (!ctx) return;
     ctx.beginPath();
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    ctx.moveTo(x, y);
     setIsDrawing(true);
   };
 
-  const handleMouseMove = (e) => {
+  const draw = (x, y) => {
     if (!isDrawing || !ctx) return;
-    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    ctx.lineTo(x, y);
     ctx.stroke();
   };
 
-  const handleMouseUp = () => {
+  const stopDrawing = () => {
     setIsDrawing(false);
+  };
+
+  const getTouchPos = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    return {
+      x: e.touches[0].clientX - rect.left,
+      y: e.touches[0].clientY - rect.top,
+    };
   };
 
   return (
@@ -51,10 +59,20 @@ export default function Home() {
       <canvas
         ref={canvasRef}
         style={styles.canvas}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseDown={(e) => startDrawing(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+        onMouseMove={(e) => draw(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+        onTouchStart={(e) => {
+          const { x, y } = getTouchPos(e);
+          startDrawing(x, y);
+        }}
+        onTouchMove={(e) => {
+          e.preventDefault();
+          const { x, y } = getTouchPos(e);
+          draw(x, y);
+        }}
+        onTouchEnd={stopDrawing}
       />
     </main>
   );
@@ -66,14 +84,14 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    background: '#f5f5f5',
     overflow: 'hidden',
+    background: '#f5f5f5',
   },
   canvas: {
-    border: '1px solid #ccc',
     height: '75vh',
     width: '100%',
     background: 'transparent',
     cursor: 'crosshair',
+    touchAction: 'none', // Prevents browser gestures while drawing
   },
 };
