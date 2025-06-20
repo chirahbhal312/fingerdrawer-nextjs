@@ -13,6 +13,7 @@ export default function HomePage() {
   const webglRef = useRef(null);
   const [ctx, setCtx] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [inAR, setInAR] = useState(false);
 
   const arSession = useRef({
     initialized: false,
@@ -30,46 +31,11 @@ export default function HomePage() {
     context.lineCap = 'round';
     context.strokeStyle = '#000';
     setCtx(context);
+
+    initARSession(); // show AR button immediately
   }, []);
 
-  const startDrawing = (x, y) => {
-    if (!ctx) return;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (x, y) => {
-    if (!isDrawing || !ctx) return;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    if (canvasRef.current && ctx) {
-      const dataUrl = canvasRef.current.toDataURL();
-
-      // Auto-clear canvas
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-      if (!arSession.current.initialized) {
-        initAR(dataUrl);
-      } else {
-        placeDrawingInFront(dataUrl);
-      }
-    }
-  };
-
-  const getTouchPos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: e.touches[0].clientX - rect.left,
-      y: e.touches[0].clientY - rect.top,
-    };
-  };
-
-  const initAR = async (dataUrl) => {
+  const initARSession = async () => {
     if (!THREE || !ARButton) return;
 
     const renderer = new THREE.WebGLRenderer({
@@ -89,13 +55,21 @@ export default function HomePage() {
       renderer,
     };
 
-    document.body.appendChild(ARButton.createButton(renderer, {
+    const arButton = ARButton.createButton(renderer, {
       requiredFeatures: ['local'],
       optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
       domOverlay: { root: document.getElementById('ar-overlay-container') }
-    }));
+    });
 
-    placeDrawingInFront(dataUrl);
+    document.body.appendChild(arButton);
+
+    renderer.xr.addEventListener('sessionstart', () => {
+      setInAR(true);
+    });
+
+    renderer.xr.addEventListener('sessionend', () => {
+      setInAR(false);
+    });
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
@@ -111,7 +85,7 @@ export default function HomePage() {
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
       const mesh = new THREE.Mesh(geometry, material);
 
-      // Place the mesh 1 meter in front of the XR camera
+      // Place 1m in front of the XR camera
       mesh.position.set(0, 0, -1);
       mesh.quaternion.set(0, 0, 0, 1);
 
@@ -126,27 +100,63 @@ export default function HomePage() {
     });
   };
 
+  const startDrawing = (x, y) => {
+    if (!inAR || !ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsDrawing(true);
+  };
+
+  const draw = (x, y) => {
+    if (!isDrawing || !ctx) return;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!inAR) return;
+    setIsDrawing(false);
+    if (canvasRef.current && ctx) {
+      const dataUrl = canvasRef.current.toDataURL();
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+      placeDrawingInFront(dataUrl);
+    }
+  };
+
+  const getTouchPos = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    return {
+      x: e.touches[0].clientX - rect.left,
+      y: e.touches[0].clientY - rect.top,
+    };
+  };
+
   return (
     <>
       <div id="ar-overlay-container" style={overlayStyle}>
-        <canvas
-          ref={canvasRef}
-          style={styles.canvas}
-          onMouseDown={(e) => startDrawing(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
-          onMouseMove={(e) => draw(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={(e) => {
-            const { x, y } = getTouchPos(e);
-            startDrawing(x, y);
-          }}
-          onTouchMove={(e) => {
-            e.preventDefault();
-            const { x, y } = getTouchPos(e);
-            draw(x, y);
-          }}
-          onTouchEnd={stopDrawing}
-        />
+        {inAR && (
+          <canvas
+            ref={canvasRef}
+            style={styles.canvas}
+            onMouseDown={(e) => startDrawing(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+            onMouseMove={(e) => draw(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={(e) => {
+              const { x, y } = getTouchPos(e);
+              startDrawing(x, y);
+            }}
+            onTouchMove={(e) => {
+              e.preventDefault();
+              const { x, y } = getTouchPos(e);
+              draw(x, y);
+            }}
+            onTouchEnd={stopDrawing}
+          />
+        )}
       </div>
       <canvas ref={webglRef} style={styles.webglCanvas} />
     </>
