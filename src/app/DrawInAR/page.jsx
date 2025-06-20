@@ -47,8 +47,12 @@ export default function HomePage() {
 
   const stopDrawing = () => {
     setIsDrawing(false);
-    if (canvasRef.current) {
+    if (canvasRef.current && ctx) {
       const dataUrl = canvasRef.current.toDataURL();
+
+      // Auto-clear canvas
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
       if (!arSession.current.initialized) {
         initAR(dataUrl);
       } else {
@@ -107,7 +111,7 @@ export default function HomePage() {
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
       const mesh = new THREE.Mesh(geometry, material);
 
-      // Place 1m in front of camera
+      // Place the mesh 1 meter in front of the XR camera
       mesh.position.set(0, 0, -1);
       mesh.quaternion.set(0, 0, 0, 1);
 
