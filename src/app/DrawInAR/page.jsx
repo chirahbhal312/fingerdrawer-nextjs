@@ -28,7 +28,7 @@ export default function HomePage() {
     context.strokeStyle = '#000';
     setCtx(context);
 
-    // Delay init until browser is ready and DOM is mounted
+    // Load Three.js and ARButton, then start AR session setup
     (async () => {
       const THREE = await import('three');
       const { ARButton } = await import('three/examples/jsm/webxr/ARButton.js');
@@ -95,7 +95,7 @@ export default function HomePage() {
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
       const mesh = new THREE.Mesh(geometry, material);
 
-      // Place mesh 1m in front of XR camera
+      // Place 1m in front of XR camera
       mesh.position.set(0, 0, -1);
       mesh.quaternion.set(0, 0, 0, 1);
 
