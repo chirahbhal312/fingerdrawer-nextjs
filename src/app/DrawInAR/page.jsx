@@ -12,8 +12,7 @@ const defaultColors = [
 ]
 
 export default function PaintingApp() {
-  console.log("Rendering PaintingApp")
-
+  console.log("🚀 Rendering PaintingApp")
   const canvasRef = useRef(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [tool, setTool] = useState("brush")
@@ -24,7 +23,9 @@ export default function PaintingApp() {
   const [showColorPopover, setShowColorPopover] = useState(false)
   const [showSettingsPopover, setShowSettingsPopover] = useState(false)
 
+  // Initialize/resizing canvas
   const setupCanvas = useCallback(() => {
+    console.log("⚙️ setupCanvas")
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
@@ -36,6 +37,7 @@ export default function PaintingApp() {
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    console.log("Canvas cleared & transparent")
   }, [])
 
   useEffect(() => {
@@ -54,12 +56,13 @@ export default function PaintingApp() {
 
   const startDrawing = e => {
     if (!isStarted) return
+    console.log("✏️ startDrawing", e.type)
     e.preventDefault()
     setIsDrawing(true)
     const ctx = canvasRef.current.getContext("2d")
     const { x, y } = getCoordinates(e)
     ctx.lineWidth = brushSize
-    ctx.strokeStyle = tool === "brush" ? brushColor : "#000000"
+    ctx.strokeStyle = brushColor
     ctx.globalCompositeOperation = tool === "brush" ? "source-over" : "destination-out"
     ctx.beginPath()
     ctx.moveTo(x, y)
@@ -75,15 +78,18 @@ export default function PaintingApp() {
   }
 
   const stopDrawing = () => {
+    console.log("✋ stopDrawing")
     setIsDrawing(false)
   }
 
   const clearCanvas = () => {
+    console.log("🧼 clearCanvas")
     const ctx = canvasRef.current.getContext("2d")
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
   }
 
   const startARScene = async () => {
+    console.log("🎬 startARScene")
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -91,6 +97,7 @@ export default function PaintingApp() {
     renderer.xr.enabled = true
     document.body.appendChild(renderer.domElement)
 
+    // AR session with DOM overlay
     const xrRoot = document.getElementById("xr-ui-root")
     const session = await navigator.xr.requestSession("immersive-ar", {
       requiredFeatures: ["hit-test", "dom-overlay"],
@@ -98,34 +105,40 @@ export default function PaintingApp() {
     })
     renderer.xr.setSession(session)
     document.body.appendChild(ARButton.createButton(renderer))
+    console.log("AR session started with DOM overlay")
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1))
 
+    // Load drawing image
     const img = new Image()
     img.src = sessionStorage.getItem("drawingImage") || ""
     await img.decode()
-
     const texture = new THREE.Texture(img)
     texture.needsUpdate = true
 
     const aspect = img.width / img.height
     const size = 0.5
-    const planeGeo = new THREE.PlaneGeometry(size, size / aspect)
-    const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true })
-    const plane = new THREE.Mesh(planeGeo, material)
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size / aspect),
+      new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true })
+    )
 
+    // Hit-test placement
     const refSpace = await renderer.xr.getReferenceSpace()
     const viewerSpace = await session.requestReferenceSpace("viewer")
     const hitTestSource = await session.requestHitTestSource({ space: viewerSpace })
 
-    renderer.setAnimationLoop((time, frame) => {
-      if (frame && !scene.getObjectById(plane.id)) {
+    let placed = false
+    renderer.setAnimationLoop((_, frame) => {
+      if (frame && !placed) {
         const hits = frame.getHitTestResults(hitTestSource)
-        if (hits.length > 0) {
-          const hitPose = hits[0].getPose(refSpace)
-          plane.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z)
-          plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().fromArray(hitPose.transform.matrix))
+        if (hits.length) {
+          const pose = hits[0].getPose(refSpace)
+          plane.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z)
+          plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix))
           scene.add(plane)
+          placed = true
+          console.log("✅ Placed drawing image in AR")
         }
       }
       renderer.render(scene, camera)
@@ -133,24 +146,25 @@ export default function PaintingApp() {
   }
 
   const saveAndStartAR = () => {
+    console.log("💾 saveAndStartAR")
     const url = canvasRef.current.toDataURL("image/png")
     sessionStorage.setItem("drawingImage", url)
     startARScene()
   }
 
   useEffect(() => {
-    const handler = e => {
+    const handleClickOutside = e => {
       if (!e.target.closest("#color-popover")) setShowColorPopover(false)
       if (!e.target.closest("#settings-popover")) setShowSettingsPopover(false)
     }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
   return (
     <div id="xr-ui-root" className="h-screen flex flex-col bg-transparent">
-      {/* Header */}
-      <div className="p-4 bg-white/80 backdrop-blur flex justify-between items-center">
+      {/* Header Bar */}
+      <div className="bg-white/80 backdrop-blur p-4 flex justify-between items-center">
         <h1 className="text-xl font-bold">Paint App</h1>
         <div className="flex gap-2">
           <button onClick={clearCanvas} disabled={!isStarted}><RotateCcw /></button>
@@ -159,24 +173,15 @@ export default function PaintingApp() {
       </div>
 
       {/* Toolbar */}
-      <div className="p-4 bg-white/80 backdrop-blur flex gap-4 items-center">
-        <button onClick={() => setTool("brush")} className={tool === "brush" ? "bg-blue-500 text-white p-2 rounded" : "border p-2 rounded"} disabled={!isStarted}>
-          <Brush />
-        </button>
-        <button onClick={() => setTool("eraser")} className={tool === "eraser" ? "bg-blue-500 text-white p-2 rounded" : "border p-2 rounded"} disabled={!isStarted}>
-          <Eraser />
-        </button>
+      <div className="bg-white/80 backdrop-blur p-2 flex items-center gap-2">
+        <button onClick={() => setTool("brush")} className={tool === "brush" ? "bg-blue-500 text-white p-2 rounded" : "border p-2 rounded"} disabled={!isStarted}><Brush /></button>
+        <button onClick={() => setTool("eraser")} className={tool === "eraser" ? "bg-blue-500 text-white p-2 rounded" : "border p-2 rounded"} disabled={!isStarted}><Eraser /></button>
         <div className="relative" id="color-popover">
-          <button onClick={() => setShowColorPopover(!showColorPopover)} className="border p-2 rounded" disabled={!isStarted}><Palette /></button>
+          <button onClick={() => setShowColorPopover(prev => !prev)} className="border p-2 rounded" disabled={!isStarted}><Palette /></button>
           {showColorPopover && (
-            <div className="absolute bg-white rounded shadow p-2 grid grid-cols-5 gap-1 mt-1">
+            <div className="absolute bg-white shadow p-2 grid grid-cols-5 gap-1 mt-1">
               {defaultColors.map(c => (
-                <button
-                  key={c}
-                  style={{ background: c }}
-                  className="w-6 h-6 rounded border"
-                  onClick={() => setBrushColor(c)}
-                />
+                <button key={c} style={{ background: c }} className="w-6 h-6 rounded border" onClick={() => setBrushColor(c)} />
               ))}
               <input type="color" value={customColor} onChange={e => setCustomColor(e.target.value)} className="w-6 h-6" />
               <button onClick={() => setBrushColor(customColor)}>Use</button>
@@ -184,9 +189,9 @@ export default function PaintingApp() {
           )}
         </div>
         <div className="relative" id="settings-popover">
-          <button onClick={() => setShowSettingsPopover(!showSettingsPopover)} className="border p-2 rounded" disabled={!isStarted}><Settings /></button>
+          <button onClick={() => setShowSettingsPopover(prev => !prev)} className="border p-2 rounded" disabled={!isStarted}><Settings /></button>
           {showSettingsPopover && (
-            <div className="absolute bg-white rounded shadow p-2 mt-1">
+            <div className="absolute bg-white shadow p-2 mt-1">
               <label>Size: {brushSize}px</label>
               <input type="range" min="1" max="50" value={brushSize} onChange={e => setBrushSize(+e.target.value)} />
             </div>
@@ -194,9 +199,9 @@ export default function PaintingApp() {
         </div>
       </div>
 
-      {/* Canvas Container */}
+      {/* Canvas Area (fixed 80vh) */}
       <div className="flex-1 flex items-end justify-center">
-        <div style={{ width: "100%", height: "80vh" }}>
+        <div style={{ width: "100%", height: "80vh", position: "relative" }}>
           <canvas
             ref={canvasRef}
             className="w-full h-full bg-transparent"
@@ -211,7 +216,7 @@ export default function PaintingApp() {
           {!isStarted && (
             <button
               onClick={() => { clearCanvas(); setIsStarted(true) }}
-              className="absolute inset-0 mx-auto my-auto block bg-green-500 text-white px-4 py-2 rounded"
+              className="absolute inset-0 m-auto bg-green-500 text-white px-4 py-2 rounded"
             >
               Start
             </button>
