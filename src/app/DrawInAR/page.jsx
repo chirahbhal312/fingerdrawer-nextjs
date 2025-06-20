@@ -1,221 +1,364 @@
-"use client"
+// pages/index.js
+"use client";
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import { ARButton } from "three/examples/jsm/webxr/ARButton";
+import { WebGLRenderer } from "three";
 
-import { useRef, useState, useEffect, useCallback } from "react"
-import * as THREE from "three"
-import { ARButton } from "three/examples/jsm/webxr/ARButton"
-import { Brush, Eraser, Download, Palette, RotateCcw, Settings } from "lucide-react"
+export default function Home() {
+  const canvasRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const rendererRef = useRef(null);
+  const drawingCanvasRef = useRef(null);
 
-const defaultColors = [
-  "#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF",
-  "#FFFF00", "#FF00FF", "#00FFFF", "#FFA500", "#800080",
-  "#FFC0CB", "#A52A2A", "#808080", "#90EE90", "#FFB6C1",
-]
-
-export default function PaintingApp() {
-  console.log("Rendering PaintingApp")
-  const canvasRef = useRef(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [tool, setTool] = useState("brush")
-  const [brushSize, setBrushSize] = useState(5)
-  const [brushColor, setBrushColor] = useState("#000000")
-  const [customColor, setCustomColor] = useState("#000000")
-  const [isStarted, setIsStarted] = useState(false)
-  const [showColorPopover, setShowColorPopover] = useState(false)
-  const [showSettingsPopover, setShowSettingsPopover] = useState(false)
-
-  const setupCanvas = useCallback(() => {
-    console.log("setupCanvas")
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-    const rect = canvas.getBoundingClientRect()
-    canvas.width = rect.width * window.devicePixelRatio
-    canvas.height = rect.height * window.devicePixelRatio
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-  }, [])
+  // Drawing settings
+  const [color, setColor] = useState("#000000"); // Stroke color
+  const [fillColor, setFillColor] = useState("#FFFFFF"); // Fill color
+  const [lineThickness, setLineThickness] = useState(5);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [tool, setTool] = useState("pencil"); // pencil, eraser, text, circle, rectangle, triangle, polygon, freehand
+  const [isFilled, setIsFilled] = useState(false); // Toggle for filling shapes
+  const points = useRef([]);
+  const startPoint = useRef(null); // For shapes (circle, rectangle)
+  const polygonPoints = useRef([]); // For polygon drawing
+  const currentText = useRef(""); // For text annotation
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    setupCanvas()
-    window.addEventListener("resize", setupCanvas)
-    return () => window.removeEventListener("resize", setupCanvas)
-  }, [setupCanvas])
+    setDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
 
-  const getCoordinates = e => {
-    const rect = canvasRef.current.getBoundingClientRect()
-    return {
-      x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
-      y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top,
-    }
-  }
+    // Optional: Update on resize
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    window.addEventListener("resize", handleResize);
 
-  const startDrawing = e => {
-    console.log("startDrawing")
-    if (!isStarted) return
-    e.preventDefault()
-    setIsDrawing(true)
-    const ctx = canvasRef.current.getContext("2d")
-    const { x, y } = getCoordinates(e)
-    ctx.lineWidth = brushSize
-    ctx.strokeStyle = tool === "brush" ? brushColor : "#000000"
-    ctx.globalCompositeOperation = tool === "brush" ? "source-over" : "destination-out"
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-  }
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-  const draw = e => {
-    if (!isDrawing || !isStarted) return
-    e.preventDefault()
-    const ctx = canvasRef.current.getContext("2d")
-    const { x, y } = getCoordinates(e)
-    ctx.lineTo(x, y)
-    ctx.stroke()
-  }
+  useEffect(() => {
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    cameraRef.current = camera;
 
-  const stopDrawing = () => {
-    console.log("stopDrawing")
-    setIsDrawing(false)
-  }
+    const renderer = new WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    rendererRef.current = renderer;
+    canvasRef.current.appendChild(renderer.domElement);
 
-  const clearCanvas = () => {
-    console.log("clearCanvas")
-    const ctx = canvasRef.current.getContext("2d")
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-  }
+    // Setup AR button
+    const arButton = ARButton.createButton(renderer, {
+      requiredFeatures: ["hit-test"],
+    });
+    document.body.appendChild(arButton);
 
-  const startARScene = async () => {
-    console.log("startARScene")
-    const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20)
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    renderer.xr.enabled = true
-    document.body.appendChild(renderer.domElement)
+    // Add some light
+    const light = new THREE.AmbientLight(0xffffff, 1);
+    scene.add(light);
 
-    const xrRoot = document.getElementById("xr-ui-root")
-    const session = await navigator.xr.requestSession("immersive-ar", {
-      requiredFeatures: ["hit-test", "dom-overlay"],
-      domOverlay: { root: xrRoot }
-    })
-    renderer.xr.setSession(session)
-    document.body.appendChild(ARButton.createButton(renderer))
+    // Handle drawing
+    const draw = (event) => {
+      const rect = drawingCanvasRef.current.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1))
+      if (isDrawing && tool === "pencil") {
+        points.current.push({ x, y });
+        const ctx = drawingCanvasRef.current.getContext("2d");
+        ctx.lineWidth = lineThickness;
+        ctx.strokeStyle = color;
+        ctx.lineJoin = ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(
+          points.current[points.current.length - 2]?.x || x,
+          points.current[points.current.length - 2]?.y || y
+        );
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      } else if (isDrawing && tool === "eraser") {
+        const ctx = drawingCanvasRef.current.getContext("2d");
+        ctx.clearRect(
+          x - lineThickness / 2,
+          y - lineThickness / 2,
+          lineThickness,
+          lineThickness
+        );
+      } else if (tool === "rectangle" || tool === "circle") {
+        // Draw shapes on mouse move when dragging
+        if (startPoint.current) {
+          const ctx = drawingCanvasRef.current.getContext("2d");
+          ctx.lineWidth = lineThickness;
+          ctx.strokeStyle = color;
+          ctx.lineJoin = ctx.lineCap = "round";
+          ctx.clearRect(
+            0,
+            0,
+            drawingCanvasRef.current.width,
+            drawingCanvasRef.current.height
+          ); // Clear canvas first
+          if (tool === "rectangle") {
+            if (isFilled) {
+              ctx.fillStyle = fillColor;
+              ctx.fillRect(
+                startPoint.current.x,
+                startPoint.current.y,
+                x - startPoint.current.x,
+                y - startPoint.current.y
+              ); // Fill shape
+            }
+            ctx.strokeRect(
+              startPoint.current.x,
+              startPoint.current.y,
+              x - startPoint.current.x,
+              y - startPoint.current.y
+            ); // Draw border
+          } else if (tool === "circle") {
+            const radius = Math.sqrt(
+              Math.pow(x - startPoint.current.x, 2) +
+                Math.pow(y - startPoint.current.y, 2)
+            );
+            if (isFilled) {
+              ctx.fillStyle = fillColor;
+              ctx.beginPath();
+              ctx.arc(
+                startPoint.current.x,
+                startPoint.current.y,
+                radius,
+                0,
+                Math.PI * 2
+              );
+              ctx.fill(); // Fill shape
+            }
+            ctx.beginPath();
+            ctx.arc(
+              startPoint.current.x,
+              startPoint.current.y,
+              radius,
+              0,
+              Math.PI * 2
+            );
+            ctx.stroke(); // Draw border
+          }
+        }
+      } else if (tool === "triangle" || tool === "polygon") {
+        // Draw triangle or polygon
+        const ctx = drawingCanvasRef.current.getContext("2d");
+        ctx.lineWidth = lineThickness;
+        ctx.strokeStyle = color;
+        ctx.lineJoin = ctx.lineCap = "round";
 
-    const img = new Image()
-    img.src = sessionStorage.getItem("drawingImage") || ""
-    await img.decode()
-    const texture = new THREE.Texture(img)
-    texture.needsUpdate = true
+        // For triangle (3 points)
+        if (tool === "triangle" && polygonPoints.current.length === 2) {
+          ctx.beginPath();
+          ctx.moveTo(polygonPoints.current[0].x, polygonPoints.current[0].y);
+          ctx.lineTo(polygonPoints.current[1].x, polygonPoints.current[1].y);
+          ctx.lineTo(x, y);
+          ctx.closePath();
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fill(); // Fill triangle
+          }
+          ctx.stroke(); // Draw border
+        }
 
-    const aspect = img.width / img.height
-    const size = 0.5
-    const planeGeo = new THREE.PlaneGeometry(size, size / aspect)
-    const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true })
-    const plane = new THREE.Mesh(planeGeo, material)
-
-    const refSpace = await renderer.xr.getReferenceSpace()
-    const viewerSpace = await session.requestReferenceSpace("viewer")
-    const hitTestSource = await session.requestHitTestSource({ space: viewerSpace })
-
-    const onXRFrame = (time, frame) => {
-      const pose = frame.getViewerPose(refSpace)
-      const hit = frame.getHitTestResults(hitTestSource)[0]
-
-      if (hit && !scene.getObjectById(plane.id)) {
-        const hitPose = hit.getPose(refSpace)
-        plane.position.set(hitPose.transform.position.x, hitPose.transform.position.y, hitPose.transform.position.z)
-        plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().fromArray(hitPose.transform.matrix))
-        scene.add(plane)
-        console.log("Placed drawing in AR")
+        // For polygon (multiple points)
+        if (tool === "polygon") {
+          polygonPoints.current.push({ x, y });
+          ctx.clearRect(
+            0,
+            0,
+            drawingCanvasRef.current.width,
+            drawingCanvasRef.current.height
+          ); // Clear canvas first
+          ctx.beginPath();
+          ctx.moveTo(polygonPoints.current[0].x, polygonPoints.current[0].y);
+          polygonPoints.current.forEach((point, index) => {
+            if (index > 0) ctx.lineTo(point.x, point.y);
+          });
+          ctx.lineTo(x, y); // Draw line to current position
+          ctx.closePath();
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fill(); // Fill polygon
+          }
+          ctx.stroke(); // Draw border
+        }
       }
+    };
 
-      renderer.render(scene, camera)
-    }
+    const handleMouseDown = (event) => {
+      const rect = drawingCanvasRef.current.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      setIsDrawing(true);
 
-    renderer.setAnimationLoop(onXRFrame)
-  }
+      if (tool === "rectangle" || tool === "circle") {
+        startPoint.current = { x, y };
+      } else if (tool === "text") {
+        // Add text annotation on click for text tool
+        const text = prompt("Enter text:");
+        if (text) {
+          const ctx = drawingCanvasRef.current.getContext("2d");
+          ctx.fillStyle = color;
+          ctx.font = "30px Arial";
+          ctx.fillText(text, x, y);
+        }
+      } else if (tool === "triangle") {
+        polygonPoints.current.push({ x, y });
+        if (polygonPoints.current.length === 3) {
+          const ctx = drawingCanvasRef.current.getContext("2d");
+          ctx.beginPath();
+          ctx.moveTo(polygonPoints.current[0].x, polygonPoints.current[0].y);
+          ctx.lineTo(polygonPoints.current[1].x, polygonPoints.current[1].y);
+          ctx.lineTo(polygonPoints.current[2].x, polygonPoints.current[2].y);
+          ctx.closePath();
+          if (isFilled) {
+            ctx.fillStyle = fillColor;
+            ctx.fill(); // Fill triangle
+          }
+          ctx.stroke();
+          polygonPoints.current = []; // Reset for next triangle
+        }
+      }
+    };
 
-  const saveAndStartAR = () => {
-    console.log("saveAndStartAR")
-    const url = canvasRef.current.toDataURL("image/png")
-    sessionStorage.setItem("drawingImage", url)
-    startARScene()
-  }
+    const handleMouseUp = () => {
+      setIsDrawing(false);
+      startPoint.current = null; // Reset startPoint after drawing a shape
+    };
 
-  useEffect(() => {
-    const handler = e => {
-      if (!e.target.closest("#color-popover")) setShowColorPopover(false)
-      if (!e.target.closest("#settings-popover")) setShowSettingsPopover(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
+    // Event listeners for drawing
+    drawingCanvasRef.current.addEventListener("mousedown", handleMouseDown);
+    drawingCanvasRef.current.addEventListener("mouseup", handleMouseUp);
+    drawingCanvasRef.current.addEventListener("mousemove", draw);
+
+    const animate = () => {
+      // Update and render the AR scene
+      if (rendererRef.current)
+        rendererRef.current.render(scene, cameraRef.current);
+      requestAnimationFrame(animate);
+    };
+    animate();
+
+    // Clean up listeners
+    return () => {
+      drawingCanvasRef.current.removeEventListener(
+        "mousedown",
+        handleMouseDown
+      );
+      drawingCanvasRef.current.removeEventListener("mouseup", handleMouseUp);
+      drawingCanvasRef.current.removeEventListener("mousemove", draw);
+    };
+  }, [color, fillColor, lineThickness, tool, isDrawing, isFilled]);
+
+  // Clear the drawing canvas
+  const clearCanvas = () => {
+    const ctx = drawingCanvasRef.current.getContext("2d");
+    ctx.clearRect(
+      0,
+      0,
+      drawingCanvasRef.current.width,
+      drawingCanvasRef.current.height
+    );
+    points.current = []; // Reset the drawing points
+    polygonPoints.current = []; // Reset polygon points
+  };
 
   return (
-    <div id="xr-ui-root" className="h-screen bg-transparent">
-      <div className="bg-white/80 p-4 flex flex-col">
-        <div className="flex justify-between">
-          <h1>Paint App</h1>
-          <div>
-            <button onClick={clearCanvas} disabled={!isStarted}><RotateCcw /></button>
-            <button onClick={saveAndStartAR} disabled={!isStarted}><Download /></button>
-          </div>
-        </div>
+    <div className="relative">
+      <h1 className="text-4xl font-bold text-center mb-6">AR Painting App</h1>
+      <div
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full z-0"
+      ></div>
 
-        <div className="relative flex-1">
-          <canvas
-            ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            style={{ background: "transparent" }}
-            className="w-full h-full"
+      {/* <canvas
+        ref={drawingCanvasRef}
+        id="drawingCanvas"
+        width={window.innerWidth}
+        height={window.innerHeight}
+        className="absolute top-0 left-0 z-10"
+      ></canvas> */}
+
+      <canvas
+        ref={drawingCanvasRef}
+        id="drawingCanvas"
+        width={dimensions.width}
+        height={dimensions.height}
+        className="absolute top-0 left-0 z-10"
+      />
+
+      {/* Control Panel */}
+      <div className="absolute top-4 left-4 z-20 p-4 bg-white bg-opacity-75 rounded shadow-md">
+        <div className="mb-3">
+          <label htmlFor="colorPicker" className="block text-lg font-medium">
+            Stroke Color:
+          </label>
+          <input
+            type="color"
+            id="colorPicker"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-full mt-2"
           />
-          {!isStarted && (
-            <button
-              onClick={() => { clearCanvas(); setIsStarted(true); }}
-              className="absolute inset-0 mx-auto my-auto block bg-green-500 text-white px-4 py-2 rounded"
-            >
-              Start
-            </button>
-          )}
         </div>
-
-        <div className="flex gap-4 py-2">
-          <button onClick={() => setTool("brush")} className={tool === "brush" ? "bg-blue-500 text-white" : "border"} disabled={!isStarted}>
-            <Brush />
+        <div className="mb-3">
+          <label
+            htmlFor="fillColorPicker"
+            className="block text-lg font-medium"
+          >
+            Fill Color:
+          </label>
+          <input
+            type="color"
+            id="fillColorPicker"
+            value={fillColor}
+            onChange={(e) => setFillColor(e.target.value)}
+            className="w-full mt-2"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-lg font-medium">Fill Shapes:</label>
+          <input
+            type="checkbox"
+            id="fillToggle"
+            checked={isFilled}
+            onChange={(e) => setIsFilled(e.target.checked)}
+            className="mr-2"
+          />
+          <span>Enable filling shapes</span>
+        </div>
+        <div className="mb-3">
+          <button
+            onClick={() => setTool(tool === "pencil" ? "eraser" : "pencil")}
+            className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-700"
+          >
+            Switch to {tool === "pencil" ? "Eraser" : "Pencil"}
           </button>
-          <button onClick={() => setTool("eraser")} className={tool === "eraser" ? "bg-blue-500 text-white" : "border"} disabled={!isStarted}>
-            <Eraser />
+        </div>
+        {/* Add other buttons for shapes and text tools as before */}
+        <div>
+          <button
+            onClick={clearCanvas}
+            className="w-full bg-red-500 text-white p-2 rounded hover:bg-red-700"
+          >
+            Clear Canvas
           </button>
-          <div id="color-popover" className="relative">
-            <button onClick={() => setShowColorPopover(!showColorPopover)} disabled={!isStarted}><Palette /></button>
-            {showColorPopover && (
-              <div className="absolute bg-white p-2 flex gap-1">
-                {defaultColors.map(c => <button key={c} style={{ background: c, width: 20, height: 20 }} onClick={() => setBrushColor(c)} />)}
-                <input type="color" value={customColor} onChange={e => setCustomColor(e.target.value)} />
-                <button onClick={() => setBrushColor(customColor)}>Use</button>
-              </div>
-            )}
-          </div>
-          <div id="settings-popover" className="relative">
-            <button onClick={() => setShowSettingsPopover(!showSettingsPopover)} disabled={!isStarted}><Settings /></button>
-            {showSettingsPopover && (
-              <div className="absolute bg-white p-2">
-                <input type="range" min="1" max="50" value={brushSize} onChange={e => setBrushSize(+e.target.value)} />
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
