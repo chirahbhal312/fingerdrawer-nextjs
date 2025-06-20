@@ -88,8 +88,8 @@ export default function PaintingApp() {
   const clearCanvas = () => {
     console.log("🧼 clearCanvas")
     const ctx = canvasRef.current.getContext("2d")
-    ctx.fillStyle = "white"
-    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+console.log("Canvas cleared to transparent")
   }
 
   const startARScene = () => {
