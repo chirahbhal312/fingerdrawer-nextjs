@@ -1,192 +1,256 @@
-'use client';
+"use client"
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react"
 
-let THREE, ARButton;
-(async () => {
-  THREE = await import('three');
-  ARButton = (await import('three/examples/jsm/webxr/ARButton.js')).ARButton;
-})();
+let THREE, ARButton
+;(async () => {
+  THREE = await import("three")
+  ARButton = (await import("three/examples/jsm/webxr/ARButton.js")).ARButton
+})()
 
 export default function HomePage() {
-  const canvasRef = useRef(null);
-  const webglRef = useRef(null);
-  const [ctx, setCtx] = useState(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [inAR, setInAR] = useState(false);
+  const canvasRef = useRef(null)
+  const webglRef = useRef(null)
+  const [ctx, setCtx] = useState(null)
+  const [drawings, setDrawings] = useState([])
+  const [inAR, setInAR] = useState(false)
+  const [color, setColor] = useState("#000000")
+  const [brushSize, setBrushSize] = useState(5)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [isNewARDrawingReady, setIsNewARDrawingReady] = useState(false)
+  const [currentMaterial, setCurrentMaterial] = useState(null)
 
   const arSession = useRef({
     initialized: false,
     scene: null,
     camera: null,
     renderer: null,
-  });
+  })
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const context = canvas.getContext('2d');
-    context.lineWidth = 2;
-    context.lineCap = 'round';
-    context.strokeStyle = '#000';
-    setCtx(context);
+    const canvas = canvasRef.current
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    const context = canvas.getContext("2d")
+    context.lineWidth = brushSize
+    context.lineCap = "round"
+    context.strokeStyle = color
+    setCtx(context)
 
-    initARSession(); // show AR button immediately
-  }, []);
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    })
+    ;(async () => {
+      const THREEmod = await import("three")
+      const { ARButton: A } = await import("three/examples/jsm/webxr/ARButton.js")
+      THREE = THREEmod
+      ARButton = A
+      if (webglRef.current) initAR()
+    })()
+  }, [])
 
-  const initARSession = async () => {
-    if (!THREE || !ARButton) return;
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      canvas: webglRef.current,
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera();
-    arSession.current = {
-      initialized: true,
-      scene,
-      camera,
-      renderer,
-    };
-
-    const arButton = ARButton.createButton(renderer, {
-      requiredFeatures: ['local'],
-      optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
-      domOverlay: { root: document.getElementById('ar-overlay-container') }
-    });
-
-    document.body.appendChild(arButton);
-
-    renderer.xr.addEventListener('sessionstart', () => {
-      setInAR(true);
-    });
-
-    renderer.xr.addEventListener('sessionend', () => {
-      setInAR(false);
-    });
-
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
-    });
-  };
-
-  const placeDrawingInFront = (dataUrl) => {
-    const texture = new THREE.TextureLoader().load(dataUrl, () => {
-      const aspect = texture.image.width / texture.image.height;
-      const height = 0.75;
-      const width = height * aspect;
-      const geometry = new THREE.PlaneGeometry(width, height);
-      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-      const mesh = new THREE.Mesh(geometry, material);
-
-      // Place 1m in front of the XR camera
-      mesh.position.set(0, 0, -1);
-      mesh.quaternion.set(0, 0, 0, 1);
-
-      const group = new THREE.Group();
-      group.add(mesh);
-
-      const xrCam = arSession.current.renderer.xr.getCamera();
-      group.position.copy(xrCam.position);
-      group.quaternion.copy(xrCam.quaternion);
-
-      arSession.current.scene.add(group);
-    });
-  };
-
-  const startDrawing = (x, y) => {
-    if (!inAR || !ctx) return;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (x, y) => {
-    if (!isDrawing || !ctx) return;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    if (!inAR) return;
-    setIsDrawing(false);
-    if (canvasRef.current && ctx) {
-      const dataUrl = canvasRef.current.toDataURL();
-
-      // Clear canvas
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-      placeDrawingInFront(dataUrl);
+  useEffect(() => {
+    if (ctx) {
+      ctx.lineWidth = brushSize
+      ctx.strokeStyle = color
     }
-  };
+  }, [brushSize, color, ctx])
 
-  const getTouchPos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: e.touches[0].clientX - rect.left,
-      y: e.touches[0].clientY - rect.top,
-    };
-  };
+  const initAR = () => {
+    if (!THREE || !ARButton || !webglRef.current) return
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas: webglRef.current })
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    renderer.xr.enabled = true
+    document.body.appendChild(
+      ARButton.createButton(renderer, {
+        requiredFeatures: ["hit-test"],
+        optionalFeatures: ["dom-overlay"],
+        domOverlay: { root: document.getElementById("drawingUI") },
+      }),
+    )
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    arSession.current = { renderer, scene, camera, initialized: true }
+    renderer.xr.addEventListener("sessionstart", () => setInAR(true))
+    renderer.xr.addEventListener("sessionend", resetState)
+    renderer.setAnimationLoop(() => renderer.render(scene, camera))
+  }
+
+  const resetState = () => {
+    setInAR(false)
+    if (ctx && canvasRef.current) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    }
+    setDrawings([])
+    setIsNewARDrawingReady(false)
+    setCurrentMaterial(null)
+  }
+
+  const finalizeDrawing = () => {
+    const dataURL = canvasRef.current.toDataURL("image/png")
+    new THREE.TextureLoader().load(dataURL, (texture) => {
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+      })
+      setCurrentMaterial(mat)
+      setIsNewARDrawingReady(true)
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+
+      // Automatically place in AR after texture is loaded
+      if (inAR) {
+        setTimeout(() => placeInAR(), 100) // Small delay to ensure state is updated
+      }
+    })
+  }
+
+  const placeInAR = () => {
+    if (!isNewARDrawingReady || !currentMaterial) return
+    const { scene, renderer, camera } = arSession.current
+    const aspect = canvasRef.current.width / canvasRef.current.height
+    const geom = new THREE.PlaneGeometry(0.4, 0.4 / aspect)
+    const mesh = new THREE.Mesh(geom, currentMaterial.clone())
+    const dir = new THREE.Vector3()
+    camera.getWorldDirection(dir)
+    mesh.position.copy(camera.position).add(dir.multiplyScalar(1.5))
+    mesh.quaternion.copy(camera.quaternion)
+    mesh.userData.scale = 1
+    scene.add(mesh)
+    setDrawings((prev) => [...prev, mesh])
+    setIsNewARDrawingReady(false)
+  }
+
+  const clearCanvas = () => {
+    if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+  }
+
+  const deleteAllPlanes = () => {
+    const { scene } = arSession.current
+    drawings.forEach((m) => scene.remove(m))
+    setDrawings([])
+  }
+
+  const start = (x, y) => {
+    setIsDrawing(true)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+  }
+  const drawLine = (x, y) => {
+    if (isDrawing) {
+      ctx.lineTo(x, y)
+      ctx.stroke()
+    }
+  }
+  const stop = () => {
+    setIsDrawing(false)
+    finalizeDrawing()
+    // Remove the automatic placeInAR() call
+  }
+
+  const getTouch = (e) => {
+    const r = canvasRef.current.getBoundingClientRect()
+    return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top }
+  }
 
   return (
     <>
-      <div id="ar-overlay-container" style={overlayStyle}>
-        {inAR && (
-          <canvas
-            ref={canvasRef}
-            style={styles.canvas}
-            onMouseDown={(e) => startDrawing(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
-            onMouseMove={(e) => draw(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={(e) => {
-              const { x, y } = getTouchPos(e);
-              startDrawing(x, y);
-            }}
-            onTouchMove={(e) => {
-              e.preventDefault();
-              const { x, y } = getTouchPos(e);
-              draw(x, y);
-            }}
-            onTouchEnd={stopDrawing}
-          />
-        )}
+      <div id="drawingUI" style={styles.drawingUI}>
+        <div className="controls" style={styles.controls}>
+          <div className="row" style={styles.row}>
+            <label>
+              Color: <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            </label>
+            <label>
+              Brush:{" "}
+              <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(e.target.value)} />
+            </label>
+            <button
+              onClick={() => {
+                if (isNewARDrawingReady) {
+                  placeInAR()
+                } else {
+                  finalizeDrawing()
+                }
+              }}
+            >
+              Draw → AR
+            </button>
+          </div>
+          <div className="row" style={styles.row}>
+            <button onClick={clearCanvas}>Clear</button>
+            <button onClick={deleteAllPlanes}>Delete All</button>
+          </div>
+        </div>
+
+        <canvas
+          id="drawingCanvas"
+          ref={canvasRef}
+          style={styles.canvas}
+          onMouseDown={(e) => start(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+          onMouseMove={(e) => drawLine(e.nativeEvent.offsetX, e.nativeEvent.offsetY)}
+          onMouseUp={stop}
+          onMouseLeave={stop}
+          onTouchStart={(e) => {
+            const { x, y } = getTouch(e)
+            start(x, y)
+            e.preventDefault()
+          }}
+          onTouchMove={(e) => {
+            const { x, y } = getTouch(e)
+            drawLine(x, y)
+            e.preventDefault()
+          }}
+          onTouchEnd={stop}
+        />
       </div>
+
       <canvas ref={webglRef} style={styles.webglCanvas} />
     </>
-  );
+  )
 }
 
-const overlayStyle = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  zIndex: 10,
-  pointerEvents: 'auto',
-};
-
 const styles = {
-  canvas: {
-    width: '100%',
-    height: '100%',
-    background: 'transparent',
-    touchAction: 'none',
-    cursor: 'crosshair',
-  },
-  webglCanvas: {
-    position: 'absolute',
+  drawingUI: {
+    position: "fixed",
     top: 0,
     left: 0,
-    width: '100vw',
-    height: '100vh',
-    zIndex: 1,
+    width: "100vw",
+    height: "100vh",
+    zIndex: 3,
+    // Fixed: Changed from display: 'none' to display: 'block'
+    display: "block",
   },
-};
+  controls: {
+    position: "fixed",
+    top: 10,
+    left: 10,
+    zIndex: 4,
+    background: "rgba(255,255,255,0.9)",
+    padding: 10,
+    borderRadius: 8,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  row: {
+    display: "flex",
+    gap: 10,
+  },
+  canvas: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    zIndex: 1,
+    touchAction: "none",
+  },
+  webglCanvas: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
+    zIndex: 0,
+  },
+}
