@@ -177,8 +177,8 @@ export default function PaintingApp() {
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="flex-1 relative">
+      {/* Canvas - updated height and overflow */}
+      <div className="relative h-[80vh] overflow-hidden">
         <canvas
           ref={canvasRef}
           className="w-full h-full"
