@@ -13,6 +13,7 @@ export default function HomePage() {
   const webglRef = useRef(null);
   const [ctx, setCtx] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [drawings, setDrawings] = useState([]);
 
   const arSession = useRef({
     initialized: false,
@@ -49,10 +50,7 @@ export default function HomePage() {
     setIsDrawing(false);
     if (canvasRef.current && ctx) {
       const dataUrl = canvasRef.current.toDataURL();
-
-      // Auto-clear canvas
       ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
       if (!arSession.current.initialized) {
         initAR(dataUrl);
       } else {
@@ -111,7 +109,6 @@ export default function HomePage() {
       const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
       const mesh = new THREE.Mesh(geometry, material);
 
-      // Place the mesh 1 meter in front of the XR camera
       mesh.position.set(0, 0, -1);
       mesh.quaternion.set(0, 0, 0, 1);
 
@@ -123,12 +120,23 @@ export default function HomePage() {
       group.quaternion.copy(xrCam.quaternion);
 
       arSession.current.scene.add(group);
+      setDrawings((prev) => [...prev, group]);
     });
+  };
+
+  const clearAllDrawings = () => {
+    drawings.forEach((group) => {
+      arSession.current.scene.remove(group);
+    });
+    setDrawings([]);
   };
 
   return (
     <>
       <div id="ar-overlay-container" style={overlayStyle}>
+        <div style={styles.ui}>
+          <button onClick={clearAllDrawings} style={styles.button}>Clear All</button>
+        </div>
         <canvas
           ref={canvasRef}
           style={styles.canvas}
@@ -178,5 +186,19 @@ const styles = {
     width: '100vw',
     height: '100vh',
     zIndex: 1,
+  },
+  ui: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 20,
+  },
+  button: {
+    padding: '10px 15px',
+    fontSize: '16px',
+    background: '#fff',
+    border: '1px solid #ccc',
+    borderRadius: '4px',
+    cursor: 'pointer',
   },
 };
