@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// Dynamically import Three.js modules
 let THREE, ARButton;
 (async () => {
   THREE = await import('three');
@@ -14,6 +13,13 @@ export default function HomePage() {
   const webglRef = useRef(null);
   const [ctx, setCtx] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
+
+  const arSession = useRef({
+    initialized: false,
+    scene: null,
+    camera: null,
+    renderer: null,
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,7 +49,11 @@ export default function HomePage() {
     setIsDrawing(false);
     if (canvasRef.current) {
       const dataUrl = canvasRef.current.toDataURL();
-      initAR(dataUrl);
+      if (!arSession.current.initialized) {
+        initAR(dataUrl);
+      } else {
+        placeDrawingInFront(dataUrl);
+      }
     }
   };
 
@@ -66,60 +76,49 @@ export default function HomePage() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
 
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+    arSession.current = {
+      initialized: true,
+      scene,
+      camera,
+      renderer,
+    };
+
     document.body.appendChild(ARButton.createButton(renderer, {
-      requiredFeatures: ['hit-test'],
+      requiredFeatures: ['local'],
       optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
       domOverlay: { root: document.getElementById('ar-overlay-container') }
     }));
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera();
-
-    const texture = new THREE.TextureLoader().load(dataUrl);
-    const aspect = 1;
-    const geometry = new THREE.PlaneGeometry(1 * aspect, 1);
-    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-    const mesh = new THREE.Mesh(geometry, material);
-
-    let hitTestSource = null;
-    let hasPlaced = false;
-
-    renderer.xr.addEventListener('sessionstart', async () => {
-      const session = renderer.xr.getSession();
-      const viewerSpace = await session.requestReferenceSpace('viewer');
-      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-      session.addEventListener('select', (event) => {
-        if (!hasPlaced && hitTestSource) {
-          const frame = event.frame;
-          const refSpace = renderer.xr.getReferenceSpace();
-          const hits = frame.getHitTestResults(hitTestSource);
-
-          if (hits.length > 0) {
-            const hit = hits[0];
-            const pose = hit.getPose(refSpace);
-
-            mesh.position.set(
-              pose.transform.position.x,
-              pose.transform.position.y,
-              pose.transform.position.z
-            );
-            mesh.quaternion.set(
-              pose.transform.orientation.x,
-              pose.transform.orientation.y,
-              pose.transform.orientation.z,
-              pose.transform.orientation.w
-            );
-
-            scene.add(mesh);
-            hasPlaced = true;
-          }
-        }
-      });
-    });
+    placeDrawingInFront(dataUrl);
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
+    });
+  };
+
+  const placeDrawingInFront = (dataUrl) => {
+    const texture = new THREE.TextureLoader().load(dataUrl, () => {
+      const aspect = texture.image.width / texture.image.height;
+      const height = 0.75;
+      const width = height * aspect;
+      const geometry = new THREE.PlaneGeometry(width, height);
+      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+      const mesh = new THREE.Mesh(geometry, material);
+
+      // Place 1m in front of camera
+      mesh.position.set(0, 0, -1);
+      mesh.quaternion.set(0, 0, 0, 1);
+
+      const group = new THREE.Group();
+      group.add(mesh);
+
+      const xrCam = arSession.current.renderer.xr.getCamera();
+      group.position.copy(xrCam.position);
+      group.quaternion.copy(xrCam.quaternion);
+
+      arSession.current.scene.add(group);
     });
   };
 
