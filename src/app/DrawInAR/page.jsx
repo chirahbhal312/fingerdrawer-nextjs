@@ -55,36 +55,74 @@ export default function HomePage() {
     };
   };
 
-  const initAR = async (dataUrl) => {
-    if (!THREE || !ARButton) return;
+const initAR = async (dataUrl) => {
+  if (!THREE || !ARButton) return;
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      canvas: webglRef.current,
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    canvas: webglRef.current,
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+
+  document.body.appendChild(ARButton.createButton(renderer, {
+    requiredFeatures: ['hit-test'],
+    optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
+    domOverlay: { root: document.getElementById('ar-overlay-container') }
+  }));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+
+  const texture = new THREE.TextureLoader().load(dataUrl);
+  const aspect = 1; // Default aspect in case image not loaded
+  const planeGeometry = new THREE.PlaneGeometry(1 * aspect, 1);
+  const planeMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+
+  let hitTestSource = null;
+  let hasPlaced = false;
+
+  renderer.xr.addEventListener('sessionstart', async () => {
+    const session = renderer.xr.getSession();
+    const viewerSpace = await session.requestReferenceSpace('viewer');
+    hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+    session.addEventListener('select', (event) => {
+      if (!hasPlaced && hitTestSource) {
+        const frame = event.frame;
+        const referenceSpace = renderer.xr.getReferenceSpace();
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(referenceSpace);
+
+          plane.position.set(
+            pose.transform.position.x,
+            pose.transform.position.y,
+            pose.transform.position.z
+          );
+          plane.quaternion.set(
+            pose.transform.orientation.x,
+            pose.transform.orientation.y,
+            pose.transform.orientation.z,
+            pose.transform.orientation.w
+          );
+
+          scene.add(plane);
+          hasPlaced = true;
+        }
+      }
     });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true;
+  });
 
-    document.body.appendChild(ARButton.createButton(renderer, {
-      requiredFeatures: ['hit-test'],
-      optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
-      domOverlay: { root: document.getElementById('ar-overlay-container') }
-    }));
+  renderer.setAnimationLoop((timestamp, frame) => {
+    renderer.render(scene, camera);
+  });
+};
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera();
-
-    const texture = new THREE.TextureLoader().load(dataUrl, () => {
-      const aspect = texture.image.width / texture.image.height;
-      const height = 0.75;
-      const width = height * aspect;
-      const geometry = new THREE.PlaneGeometry(width, height);
-      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(0, 0, -1);
-      scene.add(mesh);
-    });
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
