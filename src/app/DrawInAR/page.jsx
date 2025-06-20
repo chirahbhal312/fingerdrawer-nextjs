@@ -1,65 +1,90 @@
-"use client";
+// src/app/page.jsx
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
-import { ARButton } from "three/examples/jsm/webxr/ARButton.js";
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 
-export default function HomePage() {
+export default function Page() {
   const canvasRef = useRef(null);
-  const drawingUIRef = useRef(null);
-  const hamburgerRef = useRef(null);
-  const colorPickerRef = useRef(null);
-  const brushSizeRef = useRef(null);
-  const clearButtonRef = useRef(null);
-  const enterARButtonRef = useRef(null);
-  const deleteAllPlanesButtonRef = useRef(null);
-  const overlayRef = useRef(null);
-
-  const [drawing, setDrawing] = useState(false);
-  const [lastPos, setLastPos] = useState([0, 0]);
-  const [isNewARDrawingReady, setIsNewARDrawingReady] = useState(false);
+  const containerRef = useRef(null);
+  const [ctx, setCtx] = useState(null);
+  const [color, setColor] = useState('#000000');
+  const [brush, setBrush] = useState(5);
+  const [drawingUI, setDrawingUI] = useState(false);
+  const [isNewARDrawingReady, setNewARDrawingReady] = useState(false);
   const [currentMaterial, setCurrentMaterial] = useState(null);
 
-  const [sceneState, setSceneState] = useState({
-    scene: null,
-    camera: null,
-    renderer: null,
-    controller: null,
-    selectedPlane: null,
-  });
+  // AR state refs
+  const sceneRef = useRef();
+  const cameraRef = useRef();
+  const rendererRef = useRef();
+  const controllerRef = useRef();
+  const selectedPlaneRef = useRef(null);
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const dragPlaneRef = useRef(new THREE.Plane());
+  const dragIntersectionRef = useRef(new THREE.Vector3());
+  const dragOffsetRef = useRef(new THREE.Vector3());
+  const isDraggingRef = useRef(false);
+  const initialDistanceRef = useRef(0);
+  const initialScaleRef = useRef(1);
+  const rotationStartAngleRef = useRef(0);
+  const initialRotationYRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const _ctx = canvas.getContext('2d');
+    setCtx(_ctx);
 
-    function resizeCanvas() {
+    const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-    }
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
+    };
+    window.addEventListener('resize', resize);
+    resize();
 
-    function startDrawing(x, y) {
-      setDrawing(true);
-      setLastPos([x, y]);
-    }
+    let drawing = false;
+    let lastX = 0;
+    let lastY = 0;
 
-    function drawLine(x, y) {
+    const startDrawing = (x, y) => {
+      drawing = true;
+      [lastX, lastY] = [x, y];
+    };
+    const drawLine = (x, y) => {
       if (!drawing) return;
-      ctx.strokeStyle = colorPickerRef.current.value;
-      ctx.lineWidth = brushSizeRef.current.value;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(...lastPos);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      setLastPos([x, y]);
-    }
+      _ctx.strokeStyle = color;
+      _ctx.lineWidth = brush;
+      _ctx.lineCap = 'round';
+      _ctx.beginPath();
+      _ctx.moveTo(lastX, lastY);
+      _ctx.lineTo(x, y);
+      _ctx.stroke();
+      [lastX, lastY] = [x, y];
+    };
 
-    const updateTexture = () => {
-      const dataURL = canvas.toDataURL("image/png");
-      const textureLoader = new THREE.TextureLoader();
-      textureLoader.load(dataURL, (texture) => {
+    // Pointer events
+    canvas.addEventListener('mousedown', e => startDrawing(e.offsetX, e.offsetY));
+    canvas.addEventListener('mousemove', e => drawLine(e.offsetX, e.offsetY));
+    ['mouseup', 'mouseout'].forEach(ev =>
+      canvas.addEventListener(ev, () => (drawing = false))
+    );
+
+    // Touch events
+    canvas.addEventListener('touchstart', e => {
+      const t = e.touches[0];
+      startDrawing(t.clientX, t.clientY);
+      e.preventDefault();
+    });
+    canvas.addEventListener('touchmove', e => {
+      const t = e.touches[0];
+      drawLine(t.clientX, t.clientY);
+      e.preventDefault();
+    });
+    canvas.addEventListener('touchend', () => {
+      drawing = false;
+      const dataURL = canvas.toDataURL('image/png');
+      new THREE.TextureLoader().load(dataURL, texture => {
         setCurrentMaterial(
           new THREE.MeshBasicMaterial({
             map: texture,
@@ -67,155 +92,201 @@ export default function HomePage() {
             side: THREE.DoubleSide,
           })
         );
-        setIsNewARDrawingReady(true);
+        setNewARDrawingReady(true);
       });
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      _ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    return () => {
+      window.removeEventListener('resize', resize);
     };
+  }, [color, brush]);
 
-    canvas.addEventListener("mousedown", (e) => startDrawing(e.offsetX, e.offsetY));
-    canvas.addEventListener("mousemove", (e) => drawLine(e.offsetX, e.offsetY));
-    canvas.addEventListener("mouseup", () => setDrawing(false));
-    canvas.addEventListener("mouseout", () => setDrawing(false));
+  const clearCanvas = () => {
+    if (ctx) ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  };
 
-    canvas.addEventListener("touchstart", (e) => {
-      const touch = e.touches[0];
-      startDrawing(touch.clientX, touch.clientY);
-      e.preventDefault();
+  const prepareARTexture = () => {
+    if (!ctx) return;
+    const dataURL = canvasRef.current.toDataURL('image/png');
+    new THREE.TextureLoader().load(dataURL, texture => {
+      setCurrentMaterial(
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          side: THREE.DoubleSide,
+        })
+      );
+      setNewARDrawingReady(true);
+    });
+  };
+
+  const deleteAllPlanes = () => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    scene.children = scene.children.filter(obj => {
+      if (obj.isMesh && obj.geometry?.type === 'PlaneGeometry') {
+        scene.remove(obj);
+        return false;
+      }
+      return true;
+    });
+    selectedPlaneRef.current = null;
+  };
+
+  useEffect(() => {
+    // initAR
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    containerRef.current.appendChild(renderer.domElement);
+
+    const arButton = ARButton.createButton(renderer, {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: document.body },
+    });
+    document.body.appendChild(arButton);
+
+    renderer.xr.addEventListener('sessionstart', () => setDrawingUI(true));
+    renderer.xr.addEventListener('sessionend', () => {
+      setDrawingUI(false);
+      if (ctx) ctx.clearRect(0, canvasRef.current.width, canvasRef.current.height);
+      setNewARDrawingReady(false);
+      setCurrentMaterial(null);
+      selectedPlaneRef.current = null;
     });
 
-    canvas.addEventListener("touchmove", (e) => {
-      const touch = e.touches[0];
-      drawLine(touch.clientX, touch.clientY);
-      e.preventDefault();
+    const controller = renderer.xr.getController(0);
+    scene.add(controller);
+
+    controller.addEventListener('select', () => {
+      if (!isNewARDrawingReady || !currentMaterial) return;
+      const aspect = canvasRef.current.width / canvasRef.current.height;
+      const geometry = new THREE.PlaneGeometry(0.4, 0.4 / aspect);
+      const plane = new THREE.Mesh(geometry, currentMaterial.clone());
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      plane.position.copy(camera.position).add(dir.multiplyScalar(1.5));
+      plane.quaternion.copy(camera.quaternion);
+      plane.userData.scale = 1;
+      scene.add(plane);
+      selectedPlaneRef.current = plane;
+      setNewARDrawingReady(false);
     });
 
-    canvas.addEventListener("touchend", updateTexture);
+    const animate = () => renderer.render(scene, camera);
+    renderer.setAnimationLoop(animate);
 
-    clearButtonRef.current.addEventListener("click", () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const raycaster = raycasterRef.current;
+    const dragPlane = dragPlaneRef.current;
+    const dragIntersection = dragIntersectionRef.current;
+    const dragOffset = dragOffsetRef.current;
+
+    window.addEventListener('touchstart', e => {
+      if (!drawingUI && e.touches.length === 1) {
+        const t = e.touches[0];
+        const ndc = new THREE.Vector2((t.clientX / window.innerWidth) * 2 - 1, -(t.clientY / window.innerHeight) * 2 + 1);
+        raycaster.setFromCamera(ndc, camera);
+        const hit = raycaster.intersectObjects(scene.children, false).find(i => i.object.isMesh && i.object.geometry?.type === 'PlaneGeometry');
+        if (hit) selectedPlaneRef.current = hit.object;
+      }
+      const sel = selectedPlaneRef.current;
+      if (!sel || drawingUI) return;
+
+      if (e.touches.length === 1) {
+        isDraggingRef.current = true;
+        const t = e.touches[0];
+        const ndc = new THREE.Vector2((t.clientX / window.innerWidth) * 2 - 1, -(t.clientY / window.innerHeight) * 2 + 1);
+        raycaster.setFromCamera(ndc, camera);
+        dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).normalize(), sel.position);
+        raycaster.ray.intersectPlane(dragPlane, dragIntersection);
+        dragOffset.copy(dragIntersection).sub(sel.position);
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialDistanceRef.current = Math.hypot(dx, dy);
+        initialScaleRef.current = sel.scale.x;
+        rotationStartAngleRef.current = Math.atan2(dy, dx);
+        initialRotationYRef.current = sel.rotation.y;
+      }
     });
 
-    enterARButtonRef.current.addEventListener("click", updateTexture);
+    window.addEventListener('touchmove', e => {
+      const sel = selectedPlaneRef.current;
+      if (!sel || drawingUI) return;
+      const raycaster = raycasterRef.current;
+      const dragPlane = dragPlaneRef.current;
+      const dragIntersection = dragIntersectionRef.current;
+      const dragOffset = dragOffsetRef.current;
 
-    hamburgerRef.current.addEventListener("click", () => {
-      drawingUIRef.current.classList.toggle("hidden");
-    });
-
-    const initAR = () => {
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera();
-
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.xr.enabled = true;
-      document.body.appendChild(renderer.domElement);
-
-      const arButton = ARButton.createButton(renderer, {
-        requiredFeatures: ["hit-test"],
-        optionalFeatures: ["dom-overlay"],
-        domOverlay: { root: overlayRef.current },
-      });
-      document.body.appendChild(arButton);
-
-      const controller = renderer.xr.getController(0);
-      scene.add(controller);
-
-      controller.addEventListener("select", () => {
-        if (!isNewARDrawingReady || !currentMaterial) return;
-        const aspect = canvas.width / canvas.height;
-        const geometry = new THREE.PlaneGeometry(0.4, 0.4 / aspect);
-        const plane = new THREE.Mesh(geometry, currentMaterial.clone());
-        const dir = new THREE.Vector3();
-        camera.getWorldDirection(dir);
-        plane.position.copy(camera.position).add(dir.multiplyScalar(1.5));
-        plane.quaternion.copy(camera.quaternion);
-        plane.userData.scale = 1;
-        scene.add(plane);
-        setSceneState((prev) => ({ ...prev, selectedPlane: plane }));
-        setIsNewARDrawingReady(false);
-      });
-
-      renderer.setAnimationLoop(() => renderer.render(scene, camera));
-
-      setSceneState({ scene, camera, renderer, controller, selectedPlane: null });
-    };
-
-    deleteAllPlanesButtonRef.current.addEventListener("click", () => {
-      const { scene } = sceneState;
-      if (!scene) return;
-      scene.children = scene.children.filter((obj) => {
-        if (obj.isMesh && obj.geometry?.type === "PlaneGeometry") {
-          scene.remove(obj);
-          return false;
+      if (e.touches.length === 1 && isDraggingRef.current) {
+        const t = e.touches[0];
+        const ndc = new THREE.Vector2((t.clientX / window.innerWidth) * 2 - 1, -(t.clientY / window.innerHeight) * 2 + 1);
+        raycaster.setFromCamera(ndc, camera);
+        if (raycaster.ray.intersectPlane(dragPlane, dragIntersection)) {
+          sel.position.copy(dragIntersection.sub(dragOffset));
         }
-        return true;
-      });
-      setSceneState((prev) => ({ ...prev, selectedPlane: null }));
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const newDistance = Math.hypot(dx, dy);
+        const scale = initialScaleRef.current * (newDistance / initialDistanceRef.current);
+        sel.scale.set(scale, scale, scale);
+        const angle = Math.atan2(dy, dx);
+        sel.rotation.y = initialRotationYRef.current + (angle - rotationStartAngleRef.current);
+      }
     });
 
-    initAR();
+    window.addEventListener('touchend', () => {
+      isDraggingRef.current = false;
+    });
 
-    return () => window.removeEventListener("resize", resizeCanvas);
-  }, [drawing, lastPos, isNewARDrawingReady, currentMaterial, sceneState]);
+    // Save refs
+    sceneRef.current = scene;
+    cameraRef.current = camera;
+    rendererRef.current = renderer;
+    controllerRef.current = controller;
+  }, [drawingUI, currentMaterial, isNewARDrawingReady]);
 
   return (
-    <div ref={overlayRef} id="overlay-root">
-      <div ref={hamburgerRef} className="hamburger hidden">☰</div>
-      <div ref={drawingUIRef} id="drawingUI" className="hidden">
-        <div className="controls">
-          <div className="row">
-            <label>Color: <input ref={colorPickerRef} type="color" defaultValue="#000000" /></label>
-            <label>Brush: <input ref={brushSizeRef} type="range" min="1" max="50" defaultValue="5" /></label>
-            <button ref={enterARButtonRef}>Draw → AR</button>
+    <div ref={containerRef}>
+      <canvas
+        id="drawingCanvas"
+        ref={canvasRef}
+        style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
+      />
+      {drawingUI && (
+        <div className="controls" style={{
+          position: 'fixed', top: 10, left: 10, zIndex: 2, background: 'rgba(255,255,255,0.9)',
+          padding: 10, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div className="row" style={{ display: 'flex', gap: 10 }}>
+            <label>Color: <input type="color" value={color} onChange={e => setColor(e.target.value)} /></label>
+            <label>Brush: <input type="range" min="1" max="50" value={brush} onChange={e => setBrush(e.target.value)} /></label>
+            <button onClick={prepareARTexture}>Draw → AR</button>
           </div>
-          <div className="row">
-            <button ref={clearButtonRef}>Clear</button>
-            <button ref={deleteAllPlanesButtonRef}>Delete All</button>
+          <div className="row" style={{ display: 'flex', gap: 10 }}>
+            <button onClick={clearCanvas}>Clear</button>
+            <button onClick={deleteAllPlanes}>Delete All</button>
           </div>
         </div>
-        <canvas id="drawingCanvas" ref={canvasRef} style={{ position: "absolute", top: 0, left: 0, zIndex: 1, touchAction: "none" }} />
-      </div>
-      <style jsx>{`
-        html, body {
-          margin: 0;
-          overflow: hidden;
-          height: 100%;
-          background-color: black;
-        }
-        .hamburger {
-          position: fixed;
-          top: 10px;
-          right: 10px;
-          font-size: 28px;
-          z-index: 3;
-          background: rgba(255,255,255,0.9);
-          padding: 5px 10px;
-          border-radius: 8px;
-          cursor: pointer;
-        }
-        .hidden {
-          display: none;
-        }
-        .controls {
-          position: fixed;
-          top: 10px;
-          left: 10px;
-          z-index: 2;
-          background: rgba(255,255,255,0.9);
-          padding: 10px;
-          border-radius: 8px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-        .controls .row {
-          display: flex;
-          gap: 10px;
-        }
-        button {
-          padding: 5px 10px;
-        }
-      `}</style>
+      )}
+      {drawingUI && (
+        <div
+          className="hamburger"
+          style={{
+            position: 'fixed', top: 10, right: 10, fontSize: 28,
+            zIndex: 3, background: 'rgba(255,255,255,0.9)', padding: '5px 10px',
+            borderRadius: 8, cursor: 'pointer'
+          }}
+          onClick={() => setDrawingUI(false)}
+        >
+          ☰
+        </div>
+      )}
     </div>
   );
 }
