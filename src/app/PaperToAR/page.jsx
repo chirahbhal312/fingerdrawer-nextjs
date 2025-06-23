@@ -115,7 +115,7 @@ export default function PaintingApp() {
       <div className="h-[70vh] relative">
         <canvas
           ref={canvasRef}
-          className="w-full h-full touch-none cursor-crosshair"
+          className="w-full h-[70vh] touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
