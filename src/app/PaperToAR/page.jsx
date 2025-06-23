@@ -112,7 +112,7 @@ export default function PaintingApp() {
       </div>
 
       {/* Drawing Canvas */}
-      <div className="h-[70vh] relative">
+      <div className="h-[70vh] relative overflow-hidden overflow-y-hidden">
         <canvas
           ref={canvasRef}
           className="w-full h-[70vh] touch-none cursor-crosshair"
