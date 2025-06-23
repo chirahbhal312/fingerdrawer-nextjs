@@ -54,7 +54,12 @@ export default function ARScene() {
               const planeWidth = planeHeight * aspect;
 
               const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
-              const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+              const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                side: THREE.DoubleSide,
+                transparent: true,    // ✅ Enables transparency
+                alphaTest: 0.01       // ✅ Ignores fully transparent pixels
+              });
               const plane = new THREE.Mesh(geometry, material);
 
               plane.position.copy(position);
