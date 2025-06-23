@@ -29,8 +29,8 @@ export default function PaintingApp() {
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
+    .style.width = rect.width + 'px';
+    .style.height = rect.height + 'px';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -101,7 +101,7 @@ export default function PaintingApp() {
       <div className="flex-1 relative">
         <canvas
           ref={canvasRef}
-          className="w-full h-full max-h-[75vh] touch-none cursor-crosshair"
+          className="w-full h-[70vh] max-h-[75vh] touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -112,7 +112,7 @@ export default function PaintingApp() {
         />
       </div>
 
-      <div className="bg-white border-t shadow-lg p-4">
+      <div className="bg-white h-[30vh] border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex items-center gap-2">
             <button
