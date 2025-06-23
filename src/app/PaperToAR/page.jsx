@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Brush, Eraser, Download, Play, Palette, RotateCcw, Settings } from 'lucide-react';
+import { Brush, Eraser, Download, Palette, RotateCcw, Settings } from 'lucide-react';
 
 const defaultColors = [
   '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF',
@@ -15,7 +15,6 @@ export default function PaintingApp() {
   const [brushSize, setBrushSize] = useState(5);
   const [brushColor, setBrushColor] = useState('#000000');
   const [customColor, setCustomColor] = useState('#000000');
-  const [isStarted, setIsStarted] = useState(false);
   const [showColorPopover, setShowColorPopover] = useState(false);
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
 
@@ -35,7 +34,6 @@ export default function PaintingApp() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // ✅ Ensure transparent background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
@@ -55,7 +53,6 @@ export default function PaintingApp() {
   };
 
   const startDrawing = (e) => {
-    if (!isStarted) return;
     e.preventDefault();
     setIsDrawing(true);
     const ctx = canvasRef.current?.getContext('2d');
@@ -68,7 +65,7 @@ export default function PaintingApp() {
   };
 
   const draw = (e) => {
-    if (!isDrawing || !isStarted) return;
+    if (!isDrawing) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
     const { x, y } = getCoordinates(e);
@@ -90,11 +87,6 @@ export default function PaintingApp() {
     window.location.href = '/page3';
   };
 
-  const handleStart = () => {
-    setIsStarted(true);
-    clearCanvas();
-  };
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest('#color-popover')) setShowColorPopover(false);
@@ -106,22 +98,10 @@ export default function PaintingApp() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
-      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas} disabled={!isStarted}>
-            <RotateCcw className="w-4 h-4" />
-          </button>
-          <button className="p-2 rounded border hover:bg-gray-100" onClick={saveAndRedirect} disabled={!isStarted}>
-            <Download className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       <div className="flex-1 relative">
         <canvas
           ref={canvasRef}
-          className="w-full h-[70vh] max-h-[75vh] touch-none cursor-crosshair"
+          className="w-full h-full max-h-[75vh] touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -130,14 +110,6 @@ export default function PaintingApp() {
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
         />
-        {!isStarted && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 text-center shadow-lg">
-              <h2 className="text-lg font-semibold mb-2">Ready to Paint?</h2>
-              <p className="text-gray-600 mb-4">Tap Start to begin your masterpiece!</p>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="bg-white border-t shadow-lg p-4">
@@ -146,20 +118,18 @@ export default function PaintingApp() {
             <button
               className={`p-2 rounded ${tool === 'brush' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
               onClick={() => setTool('brush')}
-              disabled={!isStarted}
             >
               <Brush className="w-4 h-4" />
             </button>
             <button
               className={`p-2 rounded ${tool === 'eraser' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
               onClick={() => setTool('eraser')}
-              disabled={!isStarted}
             >
               <Eraser className="w-4 h-4" />
             </button>
 
             <div className="relative" id="color-popover">
-              <button className="p-2 rounded border hover:bg-gray-100" onClick={() => setShowColorPopover(!showColorPopover)} disabled={!isStarted}>
+              <button className="p-2 rounded border hover:bg-gray-100" onClick={() => setShowColorPopover(!showColorPopover)}>
                 <Palette className="w-4 h-4" />
               </button>
               {showColorPopover && (
@@ -189,22 +159,19 @@ export default function PaintingApp() {
                 </div>
               )}
             </div>
-          </div>
 
-          <button
-            onClick={handleStart}
-            disabled={isStarted}
-            className={`bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded flex items-center ${isStarted ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Start
-          </button>
+            <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <button className="p-2 rounded border hover:bg-gray-100" onClick={saveAndRedirect}>
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
 
           <div className="relative" id="settings-popover">
             <button
               className="p-2 rounded border hover:bg-gray-100"
               onClick={() => setShowSettingsPopover(!showSettingsPopover)}
-              disabled={!isStarted}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -226,4 +193,4 @@ export default function PaintingApp() {
       </div>
     </div>
   );
-} 
+}
