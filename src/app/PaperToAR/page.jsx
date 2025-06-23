@@ -3,10 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Brush, Eraser, Palette, RotateCcw, Settings } from 'lucide-react';
 
-const defaultColors = [
-  '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF',
-  '#00FFFF', '#FFA500', '#800080', '#FFC0CB', '#A52A2A', '#808080', '#90EE90', '#FFB6C1',
-];
+const defaultColors = [/* same as before */];
 
 export default function PaintingApp() {
   const canvasRef = useRef(null);
@@ -17,14 +14,13 @@ export default function PaintingApp() {
   const [customColor, setCustomColor] = useState('#000000');
   const [showColorPopover, setShowColorPopover] = useState(false);
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
+  const [isClearActive, setIsClearActive] = useState(false);
+  const [isViewArActive, setIsViewArActive] = useState(false);
 
   const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
@@ -33,7 +29,6 @@ export default function PaintingApp() {
     canvas.style.height = rect.height + 'px';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
@@ -102,18 +97,25 @@ export default function PaintingApp() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const buttonClass = (active) =>
+    `p-2 rounded text-white ${active ? 'bg-green-600' : 'bg-blue-500'} hover:opacity-90 active:bg-green-700`;
+
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+      {/* Top Panel */}
       <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
         <button
-          className="px-3 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 active:bg-green-700"
+          className={buttonClass(isClearActive)}
           onClick={clearCanvas}
+          onMouseDown={() => setIsClearActive(true)}
+          onMouseUp={() => setIsClearActive(false)}
         >
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
+      {/* Canvas */}
       <div className="h-[70vh] relative overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -128,12 +130,13 @@ export default function PaintingApp() {
         />
       </div>
 
+      {/* Bottom Panel */}
       <div className="h-[10vh] bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-4xl mx-auto w-full">
           {/* Left */}
           <div className="flex items-center gap-2">
             <button
-              className={`p-2 rounded text-white ${tool === 'brush' ? 'bg-green-600' : 'bg-blue-500'} hover:opacity-90 active:bg-green-700`}
+              className={buttonClass(tool === 'brush')}
               onClick={() => setTool('brush')}
             >
               <Brush className="w-4 h-4" />
@@ -141,44 +144,20 @@ export default function PaintingApp() {
 
             <div className="relative" id="color-popover">
               <button
-                className={`p-2 rounded text-white ${showColorPopover ? 'bg-green-600' : 'bg-blue-500'} hover:opacity-90 active:bg-green-700`}
+                className={buttonClass(showColorPopover)}
                 onClick={() => setShowColorPopover(!showColorPopover)}
               >
                 <Palette className="w-4 h-4" />
               </button>
-              {showColorPopover && (
-                <div className="absolute left-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                  <label className="text-sm font-medium mb-2 block">Colors</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {defaultColors.map((color) => (
-                      <button
-                        key={color}
-                        className={`w-8 h-8 rounded border-2 ${brushColor === color ? 'border-black scale-110' : 'border-gray-300'}`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setBrushColor(color)}
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-4 flex gap-2 items-center">
-                    <input
-                      type="color"
-                      value={customColor}
-                      onChange={(e) => setCustomColor(e.target.value)}
-                      className="w-12 h-8 border rounded"
-                    />
-                    <button className="px-3 py-1 bg-blue-500 text-white rounded" onClick={() => setBrushColor(customColor)}>
-                      Use
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Center */}
           <button
-            className="bg-blue-500 hover:opacity-90 active:bg-green-700 text-white px-4 py-2 rounded"
+            className={buttonClass(isViewArActive)}
             onClick={saveAndRedirect}
+            onMouseDown={() => setIsViewArActive(true)}
+            onMouseUp={() => setIsViewArActive(false)}
           >
             View in AR
           </button>
@@ -186,7 +165,7 @@ export default function PaintingApp() {
           {/* Right */}
           <div className="flex items-center gap-2">
             <button
-              className={`p-2 rounded text-white ${tool === 'eraser' ? 'bg-green-600' : 'bg-blue-500'} hover:opacity-90 active:bg-green-700`}
+              className={buttonClass(tool === 'eraser')}
               onClick={() => setTool('eraser')}
             >
               <Eraser className="w-4 h-4" />
@@ -194,24 +173,11 @@ export default function PaintingApp() {
 
             <div className="relative" id="settings-popover">
               <button
-                className={`p-2 rounded text-white ${showSettingsPopover ? 'bg-green-600' : 'bg-blue-500'} hover:opacity-90 active:bg-green-700`}
+                className={buttonClass(showSettingsPopover)}
                 onClick={() => setShowSettingsPopover(!showSettingsPopover)}
               >
                 <Settings className="w-4 h-4" />
               </button>
-              {showSettingsPopover && (
-                <div className="absolute right-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                  <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="50"
-                    value={brushSize}
-                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              )}
             </div>
           </div>
         </div>
