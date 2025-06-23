@@ -34,7 +34,9 @@ export default function PaintingApp() {
     canvas.style.height = rect.height + 'px';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    // No background fill = transparent
+
+    // ✅ Ensure transparent background
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
   useEffect(() => {
