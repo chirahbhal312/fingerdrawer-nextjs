@@ -54,29 +54,39 @@ export default function PaintingApp() {
 
   const startDrawing = (e) => {
     e.preventDefault();
-    setIsDrawing(true);
     const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
     const { x, y } = getCoordinates(e);
     ctx.lineWidth = brushSize;
-    ctx.globalCompositeOperation = tool === 'brush' ? 'source-over' : 'destination-out';
+    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
     ctx.strokeStyle = brushColor;
     ctx.beginPath();
     ctx.moveTo(x, y);
+    setIsDrawing(true);
+    console.log('Start drawing, tool:', tool);
   };
 
   const draw = (e) => {
     if (!isDrawing) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.lineWidth = brushSize;
+    ctx.strokeStyle = brushColor;
     const { x, y } = getCoordinates(e);
     ctx.lineTo(x, y);
     ctx.stroke();
   };
 
-  const stopDrawing = () => setIsDrawing(false);
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    console.log('Stop drawing');
+  };
 
   const clearCanvas = () => {
     const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
   };
 
@@ -88,27 +98,23 @@ export default function PaintingApp() {
   };
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handler = (e) => {
       if (!e.target.closest('#color-popover')) setShowColorPopover(false);
       if (!e.target.closest('#settings-popover')) setShowSettingsPopover(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
-      {/* Top Panel */}
       <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
+        <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
+          <RotateCcw className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Drawing Canvas */}
       <div className="h-[70vh] relative overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -123,10 +129,8 @@ export default function PaintingApp() {
         />
       </div>
 
-      {/* Bottom Panel */}
       <div className="h-[10vh] bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-4xl mx-auto w-full">
-          {/* Left: Brush + Palette */}
           <div className="flex items-center gap-2">
             <button
               className={`p-2 rounded ${tool === 'brush' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
@@ -134,51 +138,25 @@ export default function PaintingApp() {
             >
               <Brush className="w-4 h-4" />
             </button>
-
             <div className="relative" id="color-popover">
-              <button className="p-2 rounded border hover:bg-gray-100" onClick={() => setShowColorPopover(!showColorPopover)}>
+              <button className="p-2 rounded border hover:bg-gray-100" onClick={() => setShowColorPopover(v => !v)}>
                 <Palette className="w-4 h-4" />
               </button>
               {showColorPopover && (
                 <div className="absolute left-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                  <label className="text-sm font-medium mb-2 block">Colors</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {defaultColors.map((color) => (
-                      <button
-                        key={color}
-                        className={`w-8 h-8 rounded border-2 ${brushColor === color ? 'border-black scale-110' : 'border-gray-300'}`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setBrushColor(color)}
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-4 flex gap-2 items-center">
-                    <input
-                      type="color"
-                      value={customColor}
-                      onChange={(e) => setCustomColor(e.target.value)}
-                      className="w-12 h-8 border rounded"
-                    />
-                    <button className="px-3 py-1 bg-blue-500 text-white rounded" onClick={() => setBrushColor(customColor)}>
-                      Use
-                    </button>
-                  </div>
+                  {/* Color picker content */}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Center: View in AR */}
-          <div>
-            <button
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-              onClick={saveAndRedirect}
-            >
-              View in AR
-            </button>
-          </div>
+          <button
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+            onClick={saveAndRedirect}
+          >
+            View in AR
+          </button>
 
-          {/* Right: Eraser + Settings */}
           <div className="flex items-center gap-2">
             <button
               className={`p-2 rounded ${tool === 'eraser' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
@@ -186,29 +164,29 @@ export default function PaintingApp() {
             >
               <Eraser className="w-4 h-4" />
             </button>
-
             <div className="relative" id="settings-popover">
               <button
                 className="p-2 rounded border hover:bg-gray-100"
-                onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+                onClick={() => setShowSettingsPopover(v => !v)}
               >
                 <Settings className="w-4 h-4" />
               </button>
               {showSettingsPopover && (
                 <div className="absolute right-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                  <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
+                  <label className="text-sm block mb-2">Brush Size: {brushSize}px</label>
                   <input
                     type="range"
                     min="1"
                     max="50"
                     value={brushSize}
-                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    onChange={e => setBrushSize(+e.target.value)}
                     className="w-full"
                   />
                 </div>
               )}
             </div>
           </div>
+
         </div>
       </div>
     </div>
