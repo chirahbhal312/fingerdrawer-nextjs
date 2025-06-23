@@ -58,8 +58,8 @@ export default function PaintingApp() {
     const ctx = canvasRef.current?.getContext('2d');
     const { x, y } = getCoordinates(e);
     ctx.lineWidth = brushSize;
-    ctx.strokeStyle = tool === 'brush' ? brushColor : 'rgba(0,0,0,1)';
     ctx.globalCompositeOperation = tool === 'brush' ? 'source-over' : 'destination-out';
+    ctx.strokeStyle = brushColor;
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
@@ -126,7 +126,7 @@ export default function PaintingApp() {
       {/* Bottom Panel */}
       <div className="h-[10vh] bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-4xl mx-auto w-full">
-          {/* Left Group */}
+          {/* Left: Brush + Palette */}
           <div className="flex items-center gap-2">
             <button
               className={`p-2 rounded ${tool === 'brush' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
@@ -135,7 +135,6 @@ export default function PaintingApp() {
               <Brush className="w-4 h-4" />
             </button>
 
-            {/* Palette */}
             <div className="relative" id="color-popover">
               <button className="p-2 rounded border hover:bg-gray-100" onClick={() => setShowColorPopover(!showColorPopover)}>
                 <Palette className="w-4 h-4" />
@@ -179,7 +178,7 @@ export default function PaintingApp() {
             </button>
           </div>
 
-          {/* Right Group */}
+          {/* Right: Eraser + Settings */}
           <div className="flex items-center gap-2">
             <button
               className={`p-2 rounded ${tool === 'eraser' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
