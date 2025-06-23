@@ -97,7 +97,7 @@ export default function PaintingApp() {
   }, []);
 
   return (
-    <div className="h-[99ch] flex flex-col bg-gray-100 overflow-hidden overflow-y-hidden">
+    <div className="h-[99vh] flex flex-col bg-gray-100 overflow-hidden overflow-y-hidden">
       {/* Top Panel */}
       <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
