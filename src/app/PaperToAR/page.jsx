@@ -97,7 +97,7 @@ export default function PaintingApp() {
   }, []);
 
   return (
-    <div className="h-[99vh] flex flex-col bg-gray-100 overflow-hidden overflow-y-hidden">
+    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
       {/* Top Panel */}
       <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
@@ -112,10 +112,10 @@ export default function PaintingApp() {
       </div>
 
       {/* Drawing Canvas */}
-      <div className="h-[70vh] relative overflow-hidden overflow-y-hidden">
+      <div className="h-[70vh] relative overflow-hidden">
         <canvas
           ref={canvasRef}
-          className="w-full h-[70vh] touch-none cursor-crosshair"
+          className="w-full h-full touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
