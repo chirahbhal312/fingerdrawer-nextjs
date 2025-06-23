@@ -56,26 +56,29 @@ export default function PaintingApp() {
   }
 
   const startDrawing = (e) => {
-    if (!isStarted) return
-    e.preventDefault()
-    setIsDrawing(true)
-    const ctx = canvasRef.current?.getContext("2d")
-    const { x, y } = getCoordinates(e)
-    ctx.lineWidth = brushSize
-    ctx.strokeStyle = tool === "brush" ? brushColor : "white"
-    ctx.globalCompositeOperation = tool === "brush" ? "source-over" : "destination-out"
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-  }
+  if (!isStarted) return;
+  e.preventDefault();
+  setIsDrawing(true);
+  const ctx = canvasRef.current?.getContext("2d");
+  const { x, y } = getCoordinates(e);
+  ctx.lineWidth = brushSize;
+  ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+  ctx.strokeStyle = brushColor;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+};
 
-  const draw = (e) => {
-    if (!isDrawing || !isStarted) return
-    e.preventDefault()
-    const ctx = canvasRef.current?.getContext("2d")
-    const { x, y } = getCoordinates(e)
-    ctx.lineTo(x, y)
-    ctx.stroke()
-  }
+const draw = (e) => {
+  if (!isDrawing || !isStarted) return;
+  e.preventDefault();
+  const ctx = canvasRef.current?.getContext("2d");
+  const { x, y } = getCoordinates(e);
+  ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
+  ctx.strokeStyle = brushColor;
+  ctx.lineTo(x, y);
+  ctx.stroke();
+};
+
 
   const stopDrawing = () => setIsDrawing(false)
 
