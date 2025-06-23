@@ -99,7 +99,7 @@ export default function PaintingApp() {
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
       {/* Top Panel */}
-      <div className="h-[5vh] bg-white shadow-sm p-4 flex items-center justify-between">
+      <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
         <div className="flex items-center gap-2">
           <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
@@ -127,7 +127,7 @@ export default function PaintingApp() {
       </div>
 
       {/* Bottom Panel */}
-      <div className="h-[15vh] bg-white border-t shadow-lg p-4">
+      <div className="h-[10vh] bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex items-center gap-2">
             <button
