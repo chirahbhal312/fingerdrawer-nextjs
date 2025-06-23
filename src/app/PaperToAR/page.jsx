@@ -97,7 +97,7 @@ export default function PaintingApp() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden overflow-y-hidden">
       {/* Top Panel */}
       <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
@@ -149,7 +149,7 @@ export default function PaintingApp() {
                 <Palette className="w-4 h-4" />
               </button>
               {showColorPopover && (
-                <div className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
+                <div className="absolute left-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
                   <label className="text-sm font-medium mb-2 block">Colors</label>
                   <div className="grid grid-cols-5 gap-2">
                     {defaultColors.map((color) => (
@@ -175,7 +175,6 @@ export default function PaintingApp() {
                 </div>
               )}
             </div>
-
           </div>
 
           {/* Settings */}
