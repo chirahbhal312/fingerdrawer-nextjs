@@ -36,8 +36,9 @@ export default function PaintingApp() {
     canvas.style.height = rect.height + "px"
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
-    ctx.fillStyle = "white"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    // Clear to transparent for eraser to work
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
   }, [])
 
   useEffect(() => {
@@ -56,36 +57,35 @@ export default function PaintingApp() {
   }
 
   const startDrawing = (e) => {
-  if (!isStarted) return;
-  e.preventDefault();
-  setIsDrawing(true);
-  const ctx = canvasRef.current?.getContext("2d");
-  const { x, y } = getCoordinates(e);
-  ctx.lineWidth = brushSize;
-  ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
-  ctx.strokeStyle = brushColor;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-};
+    if (!isStarted) return
+    e.preventDefault()
+    setIsDrawing(true)
+    const ctx = canvasRef.current?.getContext("2d")
+    const { x, y } = getCoordinates(e)
+    ctx.lineWidth = brushSize
+    ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over"
+    ctx.strokeStyle = brushColor
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+  }
 
-const draw = (e) => {
-  if (!isDrawing || !isStarted) return;
-  e.preventDefault();
-  const ctx = canvasRef.current?.getContext("2d");
-  const { x, y } = getCoordinates(e);
-  ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over";
-  ctx.strokeStyle = brushColor;
-  ctx.lineTo(x, y);
-  ctx.stroke();
-};
-
+  const draw = (e) => {
+    if (!isDrawing || !isStarted) return
+    e.preventDefault()
+    const ctx = canvasRef.current?.getContext("2d")
+    const { x, y } = getCoordinates(e)
+    ctx.globalCompositeOperation = tool === "eraser" ? "destination-out" : "source-over"
+    ctx.strokeStyle = brushColor
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
 
   const stopDrawing = () => setIsDrawing(false)
 
   const clearCanvas = () => {
     const ctx = canvasRef.current?.getContext("2d")
-    ctx.fillStyle = "white"
-    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
   }
 
   const saveAndRedirect = () => {
