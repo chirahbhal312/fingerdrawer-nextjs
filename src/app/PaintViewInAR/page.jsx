@@ -37,7 +37,6 @@ export default function PaintingApp() {
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
 
-    // Clear to transparent for eraser to work
     ctx.clearRect(0, 0, canvas.width, canvas.height)
   }, [])
 
@@ -90,7 +89,22 @@ export default function PaintingApp() {
 
   const saveAndRedirect = () => {
     const canvas = canvasRef.current
-    const dataURL = canvas.toDataURL("image/png")
+    if (!canvas) return
+
+    // Create temp canvas with white background
+    const tempCanvas = document.createElement("canvas")
+    tempCanvas.width = canvas.width
+    tempCanvas.height = canvas.height
+    const tempCtx = tempCanvas.getContext("2d")
+
+    // Draw white background
+    tempCtx.fillStyle = "white"
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+
+    // Draw original canvas over it
+    tempCtx.drawImage(canvas, 0, 0)
+
+    const dataURL = tempCanvas.toDataURL("image/png")
     sessionStorage.setItem("drawingImage", dataURL)
     window.location.href = "/page3"
   }
