@@ -10,7 +10,10 @@ export default function HomePage() {
       <h1>Welcome</h1>
       <button onClick={() => router.push("/DrawInAR")}>Draw In AR</button>
       <button onClick={() => router.push("/PaintViewInAR")} style={{ marginLeft: "1rem" }}>
-        View Painting In AR
+        PaperAR
+      </button>
+       <button onClick={() => router.push("/PaperToAR")} style={{ marginLeft: "1rem" }}>
+        PaperToAR
       </button>
     </div>
   );
