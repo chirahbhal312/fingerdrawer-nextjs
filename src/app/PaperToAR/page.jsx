@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Brush, Eraser, Download, Palette, RotateCcw, Settings } from 'lucide-react';
+import { Brush, Eraser, Palette, RotateCcw, Settings } from 'lucide-react';
 
 const defaultColors = [
   '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF',
@@ -80,7 +80,7 @@ export default function PaintingApp() {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
   };
 
-  const saveAndRedirect = () => {
+  const viewInAR = () => {
     const canvas = canvasRef.current;
     const dataURL = canvas.toDataURL('image/png');
     sessionStorage.setItem('drawingImage', dataURL);
@@ -105,9 +105,6 @@ export default function PaintingApp() {
           <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
             <RotateCcw className="w-4 h-4" />
           </button>
-          <button className="p-2 rounded border hover:bg-gray-100" onClick={saveAndRedirect}>
-            <Download className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -128,7 +125,7 @@ export default function PaintingApp() {
 
       {/* Bottom Panel */}
       <div className="h-[10vh] bg-white border-t shadow-lg p-4">
-        <div className="flex items-center justify-between max-w-md mx-auto">
+        <div className="flex items-center justify-between max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-2">
             <button
               className={`p-2 rounded ${tool === 'brush' ? 'bg-blue-500 text-white' : 'border hover:bg-gray-100'}`}
@@ -177,27 +174,35 @@ export default function PaintingApp() {
             </div>
           </div>
 
-          {/* Settings */}
-          <div className="relative" id="settings-popover">
+          {/* Settings + View in AR */}
+          <div className="flex items-center gap-2">
+            <div className="relative" id="settings-popover">
+              <button
+                className="p-2 rounded border hover:bg-gray-100"
+                onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              {showSettingsPopover && (
+                <div className="absolute right-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
+                  <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+              )}
+            </div>
             <button
-              className="p-2 rounded border hover:bg-gray-100"
-              onClick={() => setShowSettingsPopover(!showSettingsPopover)}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+              onClick={viewInAR}
             >
-              <Settings className="w-4 h-4" />
+              View in AR
             </button>
-            {showSettingsPopover && (
-              <div className="absolute right-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  value={brushSize}
-                  onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
