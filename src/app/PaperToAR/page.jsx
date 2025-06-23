@@ -29,8 +29,8 @@ export default function PaintingApp() {
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    .style.width = rect.width + 'px';
-    .style.height = rect.height + 'px';
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
