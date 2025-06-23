@@ -24,38 +24,47 @@ export default function ARScene() {
 
     const controls = new OrbitControls(camera, renderer.domElement);
 
-    const textureURL = sessionStorage.getItem('drawingImage'); // 👈 Get drawing
+    const textureURL = sessionStorage.getItem('drawingImage');
     const loader = new THREE.TextureLoader();
 
-    const createImagePlane = (texture, position, quaternion) => {
-      const geometry = new THREE.PlaneGeometry(1, 0.7); // Width x Height
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-      const plane = new THREE.Mesh(geometry, material);
-      plane.position.copy(position);
-      plane.quaternion.copy(quaternion); // Face same direction as camera
-      scene.add(plane);
-    };
-
     if (textureURL) {
-      loader.load(textureURL, (texture) => {
-        renderer.xr.addEventListener('sessionstart', () => {
-          const session = renderer.xr.getSession();
+      const img = new Image();
+      img.src = textureURL;
 
-          session.addEventListener('select', () => {
-            const cameraObj = renderer.xr.getCamera(camera);
+      img.onload = () => {
+        const { width, height } = img;
+        const aspect = width / height;
 
-            const position = new THREE.Vector3();
-            const quaternion = new THREE.Quaternion();
+        loader.load(textureURL, (texture) => {
+          renderer.xr.addEventListener('sessionstart', () => {
+            const session = renderer.xr.getSession();
 
-            cameraObj.matrixWorld.decompose(position, quaternion, new THREE.Vector3());
+            session.addEventListener('select', () => {
+              const cameraObj = renderer.xr.getCamera(camera);
 
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
-            position.add(forward.multiplyScalar(1)); // Place 1 meter in front
+              const position = new THREE.Vector3();
+              const quaternion = new THREE.Quaternion();
 
-            createImagePlane(texture, position, quaternion);
+              cameraObj.matrixWorld.decompose(position, quaternion, new THREE.Vector3());
+
+              const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(quaternion);
+              position.add(forward.multiplyScalar(1)); // 1 meter in front
+
+              const planeHeight = 0.7;
+              const planeWidth = planeHeight * aspect;
+
+              const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+              const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+              const plane = new THREE.Mesh(geometry, material);
+
+              plane.position.copy(position);
+              plane.quaternion.copy(quaternion);
+
+              scene.add(plane);
+            });
           });
         });
-      });
+      };
     } else {
       console.warn("No drawing image found in sessionStorage");
     }
