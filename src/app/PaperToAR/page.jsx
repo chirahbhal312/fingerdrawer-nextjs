@@ -98,10 +98,24 @@ export default function PaintingApp() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
-      <div className="flex-1 relative">
+      {/* Top Panel */}
+      <div className="h-[15vh] bg-white shadow-sm p-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
+        <div className="flex items-center gap-2">
+          <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
+            <RotateCcw className="w-4 h-4" />
+          </button>
+          <button className="p-2 rounded border hover:bg-gray-100" onClick={saveAndRedirect}>
+            <Download className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Drawing Canvas */}
+      <div className="h-[70vh] relative">
         <canvas
           ref={canvasRef}
-          className="w-full h-[70vh] max-h-[75vh] touch-none cursor-crosshair"
+          className="w-full h-full touch-none cursor-crosshair"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -112,7 +126,8 @@ export default function PaintingApp() {
         />
       </div>
 
-      <div className="bg-white h-[30vh] border-t shadow-lg p-4">
+      {/* Bottom Panel */}
+      <div className="h-[15vh] bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex items-center gap-2">
             <button
@@ -128,6 +143,7 @@ export default function PaintingApp() {
               <Eraser className="w-4 h-4" />
             </button>
 
+            {/* Color Picker */}
             <div className="relative" id="color-popover">
               <button className="p-2 rounded border hover:bg-gray-100" onClick={() => setShowColorPopover(!showColorPopover)}>
                 <Palette className="w-4 h-4" />
@@ -160,14 +176,9 @@ export default function PaintingApp() {
               )}
             </div>
 
-            <button className="p-2 rounded border hover:bg-gray-100" onClick={clearCanvas}>
-              <RotateCcw className="w-4 h-4" />
-            </button>
-            <button className="p-2 rounded border hover:bg-gray-100" onClick={saveAndRedirect}>
-              <Download className="w-4 h-4" />
-            </button>
           </div>
 
+          {/* Settings */}
           <div className="relative" id="settings-popover">
             <button
               className="p-2 rounded border hover:bg-gray-100"
