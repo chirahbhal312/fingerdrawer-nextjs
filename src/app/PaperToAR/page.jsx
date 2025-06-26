@@ -45,7 +45,7 @@ export default function PaintingApp() {
     canvas.height = rect.height * window.devicePixelRatio
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
     canvas.style.width = rect.width + "px"
-    canvas.style.height = rect.height + "px"
+    .style.height = rect.height + "px"
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -154,7 +154,7 @@ export default function PaintingApp() {
       </div>
 
       {/* Canvas */}
-      <div className="h-[80vh] sm:h-[80vh] relative overflow-hidden bg-white m-2 sm:m-4 rounded-2xl shadow-2xl border border-[#E5E5E5]">
+      <div className="h-[70vh] sm:h-[70vh] relative overflow-hidden bg-white m-2 sm:m-4 rounded-2xl shadow-2xl border border-[#E5E5E5]">
         <canvas
           ref={canvasRef}
           className="w-full h-full touch-none cursor-crosshair rounded-xl"
