@@ -17,13 +17,14 @@ export default function HomePage() {
   const [color, setColor] = useState("#000000")
   const [brushSize, setBrushSize] = useState(5)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [showUI, setShowUI] = useState(true)
 
   const arSession = useRef({
     initialized: false,
     scene: null,
     camera: null,
     renderer: null,
-    planeCount: 0, // Track number of planes for z-offset
+    planeCount: 0,
   })
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function HomePage() {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
     })
+
     ;(async () => {
       const THREEmod = await import("three")
       const { ARButton: A } = await import("three/examples/jsm/webxr/ARButton.js")
@@ -65,10 +67,8 @@ export default function HomePage() {
     })
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.xr.enabled = true
-
-    // Enable proper depth testing and sorting for overlapping transparent objects
     renderer.sortObjects = true
-    renderer.shadowMap.enabled = false // Disable shadows for better transparency handling
+    renderer.shadowMap.enabled = false
 
     const arBtn = ARButton.createButton(renderer, {
       requiredFeatures: ["hit-test"],
@@ -100,14 +100,13 @@ export default function HomePage() {
   const finalizeDrawing = () => {
     const dataURL = canvasRef.current.toDataURL("image/png")
     new THREE.TextureLoader().load(dataURL, (texture) => {
-      // Improved material settings for better transparency handling
       const material = new THREE.MeshBasicMaterial({
         map: texture,
         transparent: true,
         side: THREE.DoubleSide,
-        alphaTest: 0.1, // Helps with transparency sorting
-        depthWrite: false, // Disable depth writing for transparent objects
-        depthTest: true, // Keep depth testing enabled
+        alphaTest: 0.1,
+        depthWrite: false,
+        depthTest: true,
       })
 
       const { scene, renderer, camera } = arSession.current
@@ -118,15 +117,11 @@ export default function HomePage() {
       const dir = new THREE.Vector3()
       camera.getWorldDirection(dir)
 
-      // Add a small z-offset for each plane to prevent z-fighting
       const zOffset = arSession.current.planeCount * 0.001
       mesh.position.copy(camera.position).add(dir.multiplyScalar(1.5 + zOffset))
       mesh.quaternion.copy(camera.quaternion)
-
-      // Set render order for proper sorting (higher numbers render last)
       mesh.renderOrder = arSession.current.planeCount
 
-      // Add a small random offset to prevent exact overlap
       const randomOffset = new THREE.Vector3(
         (Math.random() - 0.5) * 0.01,
         (Math.random() - 0.5) * 0.01,
@@ -158,15 +153,17 @@ export default function HomePage() {
     ctx.beginPath()
     ctx.moveTo(x, y)
   }
+
   const drawLine = (x, y) => {
     if (isDrawing) {
       ctx.lineTo(x, y)
       ctx.stroke()
     }
   }
+
   const stop = () => {
     setIsDrawing(false)
-    if (inAR) finalizeDrawing() // draw only during AR
+    if (inAR) finalizeDrawing()
   }
 
   const getTouch = (e) => {
@@ -176,7 +173,13 @@ export default function HomePage() {
 
   return (
     <>
-      <div id="drawingUI" style={styles.drawingUI}>
+      <div
+        id="drawingUI"
+        style={{
+          ...styles.drawingUI,
+          display: showUI ? "block" : "none",
+        }}
+      >
         <div className="controls" style={styles.controls}>
           <div className="row" style={styles.row}>
             <label>
@@ -184,12 +187,19 @@ export default function HomePage() {
             </label>
             <label>
               Brush:{" "}
-              <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(e.target.value)} />
+              <input
+                type="range"
+                min="1"
+                max="50"
+                value={brushSize}
+                onChange={(e) => setBrushSize(e.target.value)}
+              />
             </label>
           </div>
           <div className="row" style={styles.row}>
             <button onClick={clearCanvas}>Clear</button>
             <button onClick={deleteAllPlanes}>Delete All</button>
+            <button onClick={() => setShowUI((prev) => !prev)}>{showUI ? "Hide UI" : "Show UI"}</button>
           </div>
         </div>
 
@@ -228,7 +238,6 @@ const styles = {
     width: "100vw",
     height: "100vh",
     zIndex: 3,
-    display: "block",
     pointerEvents: "auto",
   },
   controls: {
