@@ -1,11 +1,24 @@
-'use client'
+"use client"
 
 import { useRef, useState, useEffect, useCallback } from "react"
 import { Brush, Eraser, Download, Play, Palette, RotateCcw, Settings } from "lucide-react"
 
 const defaultColors = [
-  "#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF",
-  "#00FFFF", "#FFA500", "#800080", "#FFC0CB", "#A52A2A", "#808080", "#90EE90", "#FFB6C1",
+  "#000000",
+  "#FFFFFF",
+  "#FF0000",
+  "#00FF00",
+  "#0000FF",
+  "#FFFF00",
+  "#FF00FF",
+  "#00FFFF",
+  "#FFA500",
+  "#800080",
+  "#FFC0CB",
+  "#A52A2A",
+  "#808080",
+  "#90EE90",
+  "#FFB6C1",
 ]
 
 export default function PaintingApp() {
@@ -124,7 +137,7 @@ export default function PaintingApp() {
   }, [])
 
   const btnClass = (active) =>
-    `p-2 rounded text-white ${active ? 'bg-green-600' : 'bg-blue-500'} hover:opacity-90 active:bg-green-700`
+    `p-2 rounded text-white ${active ? "bg-green-600" : "bg-blue-500"} hover:opacity-90 active:bg-green-700`
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
@@ -140,13 +153,6 @@ export default function PaintingApp() {
             disabled={!isStarted}
           >
             <RotateCcw className="w-4 h-4" />
-          </button>
-          <button
-            className={btnClass(false)}
-            onClick={saveAndRedirect}
-            disabled={!isStarted}
-          >
-            <Download className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -186,40 +192,43 @@ export default function PaintingApp() {
       {/* Bottom Panel – 10vh */}
       <div className="h-[10vh] bg-white border-t shadow-lg p-4">
         <div className="flex items-center justify-between max-w-md mx-auto w-full">
-          <button
-            className={btnClass(tool === "brush")}
-            onClick={() => setTool("brush")}
-            disabled={!isStarted}
-          >
+          <button className={btnClass(tool === "brush")} onClick={() => setTool("brush")} disabled={!isStarted}>
             <Brush className="w-4 h-4" />
           </button>
 
-          <button
-            className={btnClass(tool === "eraser")}
-            onClick={() => setTool("eraser")}
-            disabled={!isStarted}
-          >
+          <button className={btnClass(tool === "eraser")} onClick={() => setTool("eraser")} disabled={!isStarted}>
             <Eraser className="w-4 h-4" />
+          </button>
+
+          <button className={btnClass(false)} onClick={saveAndRedirect} disabled={!isStarted}>
+            View In AR
           </button>
 
           <div className="relative" id="color-popover">
             <button
-              className={btnClass(showColorPopover)}
-              onClick={() => setShowColorPopover(v => !v)}
+              className={`${btnClass(showColorPopover)} relative`}
+              onClick={() => setShowColorPopover((v) => !v)}
               disabled={!isStarted}
             >
               <Palette className="w-4 h-4" />
+              <div
+                className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border border-white"
+                style={{ backgroundColor: brushColor }}
+              />
             </button>
             {showColorPopover && (
-              <div className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
+              <div className="absolute left-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
                 <label className="text-sm font-medium mb-2 block">Colors</label>
                 <div className="grid grid-cols-5 gap-2">
-                  {defaultColors.map(color => (
+                  {defaultColors.map((color) => (
                     <button
                       key={color}
-                      className={`w-8 h-8 rounded border-2 ${brushColor === color ? "border-black scale-110" : "border-gray-300"}`}
+                      className={`w-8 h-8 rounded border-2 transition-all ${brushColor === color ? "border-black scale-110" : "border-gray-300 hover:border-gray-400"}`}
                       style={{ backgroundColor: color }}
-                      onClick={() => setBrushColor(color)}
+                      onClick={() => {
+                        setBrushColor(color)
+                        setShowColorPopover(false)
+                      }}
                     />
                   ))}
                 </div>
@@ -227,12 +236,15 @@ export default function PaintingApp() {
                   <input
                     type="color"
                     value={customColor}
-                    onChange={e => setCustomColor(e.target.value)}
+                    onChange={(e) => setCustomColor(e.target.value)}
                     className="w-12 h-8 border rounded"
                   />
                   <button
                     className={btnClass(false)}
-                    onClick={() => setBrushColor(customColor)}
+                    onClick={() => {
+                      setBrushColor(customColor)
+                      setShowColorPopover(false)
+                    }}
                   >
                     Use
                   </button>
@@ -244,20 +256,20 @@ export default function PaintingApp() {
           <div className="relative" id="settings-popover">
             <button
               className={btnClass(showSettingsPopover)}
-              onClick={() => setShowSettingsPopover(v => !v)}
+              onClick={() => setShowSettingsPopover((v) => !v)}
               disabled={!isStarted}
             >
               <Settings className="w-4 h-4" />
             </button>
             {showSettingsPopover && (
-              <div className="absolute right-0 top-full mt-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
+              <div className="absolute right-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
                 <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
                 <input
                   type="range"
                   min="1"
                   max="50"
                   value={brushSize}
-                  onChange={e => setBrushSize(parseInt(e.target.value))}
+                  onChange={(e) => setBrushSize(Number.parseInt(e.target.value))}
                   className="w-full"
                 />
               </div>
