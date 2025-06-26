@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect, useCallback } from "react"
-import { Brush, Eraser, Download, Play, Palette, RotateCcw, Settings } from "lucide-react"
+import { Brush, Eraser, Play, Palette, RotateCcw, Settings } from "lucide-react"
 
 const defaultColors = [
   "#000000",
@@ -217,7 +217,7 @@ export default function PaintingApp() {
               />
             </button>
             {showColorPopover && (
-              <div className="absolute left-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
+              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
                 <label className="text-sm font-medium mb-2 block">Colors</label>
                 <div className="grid grid-cols-5 gap-2">
                   {defaultColors.map((color) => (
@@ -262,7 +262,7 @@ export default function PaintingApp() {
               <Settings className="w-4 h-4" />
             </button>
             {showSettingsPopover && (
-              <div className="absolute right-0 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
+              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
                 <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
                 <input
                   type="range"
