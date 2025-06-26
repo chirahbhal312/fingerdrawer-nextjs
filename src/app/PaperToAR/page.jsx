@@ -153,6 +153,7 @@ export default function PaintingApp() {
         </button>
       </div>
 
+      
       {/* Canvas */}
       <div className="h-[70vh] sm:h-[70vh] relative overflow-hidden bg-white m-2 sm:m-4 rounded-2xl shadow-2xl border border-[#E5E5E5]">
         <canvas
