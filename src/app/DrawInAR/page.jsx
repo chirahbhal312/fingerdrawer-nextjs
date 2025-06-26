@@ -17,7 +17,6 @@ export default function HomePage() {
   const [color, setColor] = useState("#000000")
   const [brushSize, setBrushSize] = useState(5)
   const [isDrawing, setIsDrawing] = useState(false)
-  const [showUI, setShowUI] = useState(true)
 
   const arSession = useRef({
     initialized: false,
@@ -82,8 +81,17 @@ export default function HomePage() {
 
     arSession.current = { renderer, scene, camera, initialized: true, planeCount: 0 }
 
-    renderer.xr.addEventListener("sessionstart", () => setInAR(true))
-    renderer.xr.addEventListener("sessionend", resetState)
+    renderer.xr.addEventListener("sessionstart", () => {
+      setInAR(true)
+      document.getElementById("drawingUI")?.classList.remove("hidden")
+      document.getElementById("hamburger")?.classList.remove("hidden")
+    })
+
+    renderer.xr.addEventListener("sessionend", () => {
+      resetState()
+      document.getElementById("drawingUI")?.classList.add("hidden")
+      document.getElementById("hamburger")?.classList.add("hidden")
+    })
 
     renderer.setAnimationLoop(() => renderer.render(scene, camera))
   }
@@ -174,12 +182,16 @@ export default function HomePage() {
   return (
     <>
       <div
-        id="drawingUI"
-        style={{
-          ...styles.drawingUI,
-          display: showUI ? "block" : "none",
+        id="hamburger"
+        className="hamburger hidden"
+        onClick={() => {
+          document.getElementById("drawingUI")?.classList.toggle("hidden")
         }}
       >
+        ☰
+      </div>
+
+      <div id="drawingUI" className="hidden" style={styles.drawingUI}>
         <div className="controls" style={styles.controls}>
           <div className="row" style={styles.row}>
             <label>
@@ -187,19 +199,12 @@ export default function HomePage() {
             </label>
             <label>
               Brush:{" "}
-              <input
-                type="range"
-                min="1"
-                max="50"
-                value={brushSize}
-                onChange={(e) => setBrushSize(e.target.value)}
-              />
+              <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(e.target.value)} />
             </label>
           </div>
           <div className="row" style={styles.row}>
             <button onClick={clearCanvas}>Clear</button>
             <button onClick={deleteAllPlanes}>Delete All</button>
-            <button onClick={() => setShowUI((prev) => !prev)}>{showUI ? "Hide UI" : "Show UI"}</button>
           </div>
         </div>
 
@@ -270,5 +275,16 @@ const styles = {
     width: "100vw",
     height: "100vh",
     zIndex: 0,
+  },
+  hamburger: {
+    position: "fixed",
+    top: 10,
+    right: 10,
+    fontSize: "28px",
+    zIndex: 5,
+    background: "rgba(255,255,255,0.9)",
+    padding: "5px 10px",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
 }
