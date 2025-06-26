@@ -131,32 +131,30 @@ export default function PaintingApp() {
   }, [])
 
   const buttonClass = (active) =>
-    `p-2 sm:p-3 md:p-4 rounded-lg text-white transition-all duration-200 text-xs sm:text-sm md:text-base ${
+    `p-3 sm:p-4 md:p-5 rounded-lg transition-all duration-200 text-sm sm:text-base md:text-lg ${
       active
-        ? "bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg transform scale-105"
-        : "bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600"
+        ? "bg-[#7C3AED] text-white shadow-lg transform scale-105"
+        : "bg-[#3C3C3C] text-[#CCCCCC] hover:bg-[#4C4C4C] hover:text-white"
     } hover:shadow-md active:transform active:scale-95`
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#1E1E1E] overflow-hidden">
       {/* Top Panel */}
-      <div className="h-[7vh] bg-white shadow-lg p-4 flex items-center justify-between border-b border-gray-200">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Paint Studio
-        </h1>
+      <div className="h-[7vh] bg-[#2C2C2C] shadow-lg p-4 flex items-center justify-between border-b border-[#3C3C3C]">
+        <h1 className="text-2xl font-bold text-white">Paint Studio</h1>
         <button
           className={`${buttonClass(isClearActive)} flex items-center gap-1 sm:gap-2`}
           onClick={clearCanvas}
           onMouseDown={() => setIsClearActive(true)}
           onMouseUp={() => setIsClearActive(false)}
         >
-          <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+          <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           <span className="hidden sm:inline text-xs sm:text-sm">Clear</span>
         </button>
       </div>
 
       {/* Canvas */}
-      <div className="h-[70vh] sm:h-[65vh] relative overflow-hidden bg-white m-2 sm:m-4 rounded-xl shadow-inner border-2 border-gray-200">
+      <div className="h-[80vh] sm:h-[80vh] relative overflow-hidden bg-white m-2 sm:m-4 rounded-2xl shadow-2xl border border-[#E5E5E5]">
         <canvas
           ref={canvasRef}
           className="w-full h-full touch-none cursor-crosshair rounded-xl"
@@ -171,7 +169,7 @@ export default function PaintingApp() {
       </div>
 
       {/* Bottom Panel */}
-      <div className="h-[15vh] sm:h-[20vh] bg-white border-t border-gray-200 shadow-lg p-2 sm:p-4">
+      <div className="h-[10vh] sm:h-[12,5vh] bg-[#2C2C2C] border-t border-[#3C3C3C] shadow-lg p-2 sm:p-4">
         <div className="flex items-center justify-center max-w-4xl mx-auto w-full h-full">
           <div className="flex items-center justify-evenly w-full max-w-2xl gap-2 sm:gap-4">
             {/* Brush Tool */}
@@ -179,7 +177,7 @@ export default function PaintingApp() {
               className={`${buttonClass(tool === "brush")} flex items-center gap-1 sm:gap-2`}
               onClick={() => setTool("brush")}
             >
-              <Brush className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+              <Brush className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               <span className="hidden md:inline text-xs sm:text-sm">Brush</span>
             </button>
 
@@ -188,9 +186,9 @@ export default function PaintingApp() {
               className={`${buttonClass(showColorPopover)} flex items-center gap-1 sm:gap-2`}
               onClick={() => setShowColorPopover(!showColorPopover)}
             >
-              <Palette className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+              <Palette className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               <div
-                className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded border border-white shadow-sm"
+                className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded border border-white shadow-sm"
                 style={{ backgroundColor: brushColor }}
               />
               <span className="hidden md:inline text-xs sm:text-sm">Colors</span>
@@ -198,7 +196,7 @@ export default function PaintingApp() {
 
             {/* Center Action - View AR */}
             <button
-              className={`${buttonClass(isViewArActive)} px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 text-sm sm:text-base md:text-lg font-semibold`}
+              className={`${buttonClass(isViewArActive)} px-4 py-3 sm:px-6 sm:py-3 md:px-8 md:py-4 text-base sm:text-lg md:text-xl font-semibold`}
               onClick={saveAndRedirect}
               onMouseDown={() => setIsViewArActive(true)}
               onMouseUp={() => setIsViewArActive(false)}
@@ -212,7 +210,7 @@ export default function PaintingApp() {
               className={`${buttonClass(tool === "eraser")} flex items-center gap-1 sm:gap-2`}
               onClick={() => setTool("eraser")}
             >
-              <Eraser className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+              <Eraser className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               <span className="hidden md:inline text-xs sm:text-sm">Eraser</span>
             </button>
 
@@ -221,7 +219,7 @@ export default function PaintingApp() {
               className={`${buttonClass(showSettingsPopover)} flex items-center gap-1 sm:gap-2`}
               onClick={() => setShowSettingsPopover(!showSettingsPopover)}
             >
-              <Settings className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               <span className="hidden md:inline text-xs sm:text-sm">Settings</span>
             </button>
           </div>
@@ -231,14 +229,14 @@ export default function PaintingApp() {
       {/* Color Palette Modal */}
       {showColorPopover && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-2xl p-4 sm:p-6 max-w-xs sm:max-w-md w-full mx-4 shadow-2xl">
+          <div className="modal-content bg-[#2C2C2C] rounded-2xl p-4 sm:p-6 max-w-xs sm:max-w-md w-full mx-4 shadow-2xl border border-[#3C3C3C]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-800">Choose Color</h3>
+              <h3 className="text-xl font-semibold text-white">Choose Color</h3>
               <button
                 onClick={() => setShowColorPopover(false)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-[#3C3C3C] rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-6 h-6 text-[#CCCCCC]" />
               </button>
             </div>
 
@@ -247,8 +245,8 @@ export default function PaintingApp() {
               {defaultColors.map((color) => (
                 <button
                   key={color}
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg border-2 transition-all duration-200 hover:scale-110 ${
-                    brushColor === color ? "border-blue-500 shadow-lg" : "border-gray-300"
+                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl border-2 transition-all duration-200 hover:scale-110 ${
+                    brushColor === color ? "border-[#7C3AED] shadow-lg shadow-[#7C3AED]/25" : "border-[#4C4C4C]"
                   }`}
                   style={{ backgroundColor: color }}
                   onClick={() => selectColor(color)}
@@ -258,19 +256,19 @@ export default function PaintingApp() {
 
             {/* Custom Color Picker */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">Custom Color</label>
+              <label className="block text-sm font-medium text-[#CCCCCC]">Custom Color</label>
               <div className="flex items-center gap-2 sm:gap-3">
                 <input
                   type="color"
                   value={customColor}
                   onChange={handleCustomColorChange}
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg border border-gray-300 cursor-pointer"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border border-[#4C4C4C] cursor-pointer bg-[#3C3C3C]"
                 />
                 <input
                   type="text"
                   value={customColor}
                   onChange={(e) => handleCustomColorChange(e)}
-                  className="flex-1 px-2 py-1 sm:px-3 sm:py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-2 py-1 sm:px-3 sm:py-2 text-sm border border-[#4C4C4C] rounded-xl focus:ring-2 focus:ring-[#7C3AED] focus:border-[#7C3AED] bg-[#3C3C3C] text-white placeholder-[#888888]"
                   placeholder="#000000"
                 />
               </div>
@@ -282,34 +280,34 @@ export default function PaintingApp() {
       {/* Settings Modal */}
       {showSettingsPopover && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-2xl p-4 sm:p-6 max-w-xs sm:max-w-md w-full mx-4 shadow-2xl">
+          <div className="modal-content bg-[#2C2C2C] rounded-2xl p-4 sm:p-6 max-w-xs sm:max-w-md w-full mx-4 shadow-2xl border border-[#3C3C3C]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-800">Brush Settings</h3>
+              <h3 className="text-xl font-semibold text-white">Brush Settings</h3>
               <button
                 onClick={() => setShowSettingsPopover(false)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-[#3C3C3C] rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-6 h-6 text-[#CCCCCC]" />
               </button>
             </div>
 
             {/* Brush Size */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Brush Size: {brushSize}px</label>
+                <label className="block text-sm font-medium text-[#CCCCCC] mb-2">Brush Size: {brushSize}px</label>
                 <input
                   type="range"
                   min="1"
                   max="50"
                   value={brushSize}
                   onChange={(e) => setBrushSize(Number.parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  className="w-full h-2 bg-[#3C3C3C] rounded-lg appearance-none cursor-pointer slider"
                 />
               </div>
 
               {/* Brush Preview */}
               <div className="flex items-center justify-center py-4">
-                <div className="bg-gray-100 rounded-lg p-4">
+                <div className="bg-[#3C3C3C] rounded-xl p-4">
                   <div
                     className="rounded-full"
                     style={{
@@ -327,8 +325,10 @@ export default function PaintingApp() {
                   <button
                     key={size}
                     onClick={() => setBrushSize(size)}
-                    className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                      brushSize === size ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    className={`py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
+                      brushSize === size
+                        ? "bg-[#7C3AED] text-white"
+                        : "bg-[#3C3C3C] text-[#CCCCCC] hover:bg-[#4C4C4C] hover:text-white"
                     }`}
                   >
                     {size}px
@@ -346,18 +346,18 @@ export default function PaintingApp() {
           height: 20px;
           width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #7C3AED;
           cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
         }
         .slider::-moz-range-thumb {
           height: 20px;
           width: 20px;
           border-radius: 50%;
-          background: #3b82f6;
+          background: #7C3AED;
           cursor: pointer;
           border: none;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
         }
       `}</style>
     </div>
