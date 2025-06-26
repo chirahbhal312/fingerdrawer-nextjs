@@ -136,32 +136,38 @@ export default function PaintingApp() {
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
-  const btnClass = (active) =>
-    `p-2 rounded text-white ${active ? "bg-green-600" : "bg-blue-500"} hover:opacity-90 active:bg-green-700`
+  const btnClass = (active, disabled = false) =>
+    `p-3 sm:p-4 md:p-5 rounded-lg transition-all duration-200 text-sm sm:text-base md:text-lg ${
+      disabled
+        ? "bg-[#2C2C2C] text-[#666666] cursor-not-allowed"
+        : active
+          ? "bg-[#7C3AED] text-white shadow-lg transform scale-105"
+          : "bg-[#3C3C3C] text-[#CCCCCC] hover:bg-[#4C4C4C] hover:text-white"
+    } hover:shadow-md active:transform active:scale-95`
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#1E1E1E] overflow-hidden">
       {/* Top Panel – 10vh */}
-      <div className="h-[10vh] bg-white shadow-sm p-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">Paint App</h1>
+      <div className="h-[10vh] bg-[#2C2C2C] shadow-lg p-4 flex items-center justify-between border-b border-[#3C3C3C]">
+        <h1 className="text-2xl font-bold text-white">Paint Studio</h1>
         <div className="flex items-center gap-2">
           <button
-            className={btnClass(isClearActive)}
+            className={btnClass(isClearActive, !isStarted)}
             onClick={clearCanvas}
             onMouseDown={() => setIsClearActive(true)}
             onMouseUp={() => setIsClearActive(false)}
             disabled={!isStarted}
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
         </div>
       </div>
 
       {/* Canvas – 70vh */}
-      <div className="h-[70vh] relative">
+      <div className="h-[70vh] relative bg-white m-2 sm:m-4 rounded-2xl shadow-2xl border border-[#E5E5E5]">
         <canvas
           ref={canvasRef}
-          className="w-full h-full touch-none cursor-crosshair"
+          className="w-full h-full touch-none cursor-crosshair rounded-2xl"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -171,17 +177,17 @@ export default function PaintingApp() {
           onTouchEnd={stopDrawing}
         />
         {!isStarted && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 text-center shadow-lg">
-              <h2 className="text-lg font-semibold mb-2">Ready to Paint?</h2>
-              <p className="text-gray-600 mb-4">Tap Start to begin your masterpiece!</p>
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-2xl">
+            <div className="bg-[#2C2C2C] rounded-2xl p-6 text-center shadow-2xl border border-[#3C3C3C]">
+              <h2 className="text-xl font-semibold mb-2 text-white">Ready to Paint?</h2>
+              <p className="text-[#CCCCCC] mb-4">Tap Start to begin your masterpiece!</p>
               <button
-                className={btnClass(isStartActive)}
+                className={`${btnClass(isStartActive)} flex items-center gap-2 mx-auto`}
                 onClick={handleStart}
                 onMouseDown={() => setIsStartActive(true)}
                 onMouseUp={() => setIsStartActive(false)}
               >
-                <Play className="w-4 h-4 mr-2" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                 Start
               </button>
             </div>
@@ -190,40 +196,52 @@ export default function PaintingApp() {
       </div>
 
       {/* Bottom Panel – 10vh */}
-      <div className="h-[10vh] bg-white border-t shadow-lg p-4">
+      <div className="h-[10vh] bg-[#2C2C2C] border-t border-[#3C3C3C] shadow-lg p-4">
         <div className="flex items-center justify-between max-w-md mx-auto w-full">
-          <button className={btnClass(tool === "brush")} onClick={() => setTool("brush")} disabled={!isStarted}>
-            <Brush className="w-4 h-4" />
+          <button
+            className={btnClass(tool === "brush", !isStarted)}
+            onClick={() => setTool("brush")}
+            disabled={!isStarted}
+          >
+            <Brush className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
 
-          <button className={btnClass(tool === "eraser")} onClick={() => setTool("eraser")} disabled={!isStarted}>
-            <Eraser className="w-4 h-4" />
+          <button
+            className={btnClass(tool === "eraser", !isStarted)}
+            onClick={() => setTool("eraser")}
+            disabled={!isStarted}
+          >
+            <Eraser className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
 
-          <button className={btnClass(false)} onClick={saveAndRedirect} disabled={!isStarted}>
+          <button className={btnClass(false, !isStarted)} onClick={saveAndRedirect} disabled={!isStarted}>
             View In AR
           </button>
 
           <div className="relative" id="color-popover">
             <button
-              className={`${btnClass(showColorPopover)} relative`}
+              className={`${btnClass(showColorPopover, !isStarted)} relative`}
               onClick={() => setShowColorPopover((v) => !v)}
               disabled={!isStarted}
             >
-              <Palette className="w-4 h-4" />
+              <Palette className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               <div
-                className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border border-white"
+                className="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-white"
                 style={{ backgroundColor: brushColor }}
               />
             </button>
             {showColorPopover && (
-              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                <label className="text-sm font-medium mb-2 block">Colors</label>
+              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-[#2C2C2C] rounded-2xl shadow-2xl p-4 z-10 w-64 border border-[#3C3C3C]">
+                <label className="text-sm font-medium mb-2 block text-white">Colors</label>
                 <div className="grid grid-cols-5 gap-2">
                   {defaultColors.map((color) => (
                     <button
                       key={color}
-                      className={`w-8 h-8 rounded border-2 transition-all ${brushColor === color ? "border-black scale-110" : "border-gray-300 hover:border-gray-400"}`}
+                      className={`w-10 h-10 rounded-xl border-2 transition-all ${
+                        brushColor === color
+                          ? "border-[#7C3AED] scale-110 shadow-lg shadow-[#7C3AED]/25"
+                          : "border-[#4C4C4C] hover:border-[#7C3AED]"
+                      }`}
                       style={{ backgroundColor: color }}
                       onClick={() => {
                         setBrushColor(color)
@@ -237,7 +255,7 @@ export default function PaintingApp() {
                     type="color"
                     value={customColor}
                     onChange={(e) => setCustomColor(e.target.value)}
-                    className="w-12 h-8 border rounded"
+                    className="w-12 h-8 border border-[#4C4C4C] rounded-xl bg-[#3C3C3C]"
                   />
                   <button
                     className={btnClass(false)}
@@ -255,28 +273,49 @@ export default function PaintingApp() {
 
           <div className="relative" id="settings-popover">
             <button
-              className={btnClass(showSettingsPopover)}
+              className={btnClass(showSettingsPopover, !isStarted)}
               onClick={() => setShowSettingsPopover((v) => !v)}
               disabled={!isStarted}
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
             {showSettingsPopover && (
-              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-white rounded-md shadow-lg p-4 z-10 w-64">
-                <label className="text-sm font-medium mb-2 block">Brush Size: {brushSize}px</label>
+              <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-[#2C2C2C] rounded-2xl shadow-2xl p-4 z-10 w-64 border border-[#3C3C3C]">
+                <label className="text-sm font-medium mb-2 block text-white">Brush Size: {brushSize}px</label>
                 <input
                   type="range"
                   min="1"
                   max="50"
                   value={brushSize}
                   onChange={(e) => setBrushSize(Number.parseInt(e.target.value))}
-                  className="w-full"
+                  className="w-full h-2 bg-[#3C3C3C] rounded-lg appearance-none cursor-pointer slider"
                 />
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #7C3AED;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+        }
+        .slider::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: #7C3AED;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+        }
+      `}</style>
     </div>
   )
 }
